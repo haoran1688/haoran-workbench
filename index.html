@@ -1601,16 +1601,29 @@ function generateQRCode() {
   
   // 动态加载 qrcode.js 并生成
   loadScript('https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js', function() {
+    if (typeof QRCode === 'undefined') {
+      document.getElementById('syncStatusQR').textContent = '二维码库加载失败，尝试备用方案...';
+      generateQRCodeFallback('GROWTH:' + compressed);
+      return;
+    }
     document.getElementById('qrcodeContainer').innerHTML = '';
-    new QRCode(document.getElementById('qrcodeContainer'), {
-      text: 'GROWTH:' + compressed,
-      width: 240,
-      height: 240,
-      colorDark: '#000000',
-      colorLight: '#ffffff',
-      correctLevel: QRCode.CorrectLevel.M
-    });
-    document.getElementById('syncStatusQR').textContent = '二维码已生成，请用手机扫描（有效期5分钟）';
+    try {
+      new QRCode(document.getElementById('qrcodeContainer'), {
+        text: 'GROWTH:' + compressed,
+        width: 240,
+        height: 240,
+        colorDark: '#000000',
+        colorLight: '#ffffff',
+        correctLevel: QRCode.CorrectLevel.M
+      });
+      document.getElementById('syncStatusQR').textContent = '二维码已生成，请用手机扫描';
+    } catch(e) {
+      document.getElementById('syncStatusQR').textContent = '生成失败: ' + e.message;
+    }
+  }, function() {
+    // 加载失败，使用备用方案
+    document.getElementById('syncStatusQR').textContent = '使用备用二维码方案...';
+    generateQRCodeFallback('GROWTH:' + compressed);
   });
 }
 
@@ -1681,16 +1694,38 @@ function scanFrame() {
   }
 }
 
-function loadScript(url, callback) {
+function loadScript(url, onSuccess, onError) {
   if (document.querySelector('script[src="' + url + '"]')) {
-    if (callback) callback();
+    if (onSuccess) onSuccess();
     return;
   }
   var script = document.createElement('script');
   script.src = url;
-  script.onload = callback;
-  script.onerror = function() { alert('加载失败，请检查网络'); };
+  script.onload = onSuccess;
+  script.onerror = function() {
+    if (onError) onError();
+    else alert('加载失败，请检查网络');
+  };
   document.head.appendChild(script);
+}
+
+// 备用二维码方案：使用 Google Chart API 生成
+function generateQRCodeFallback(text) {
+  var container = document.getElementById('qrcodeContainer');
+  container.innerHTML = '';
+  var img = document.createElement('img');
+  img.src = 'https://chart.googleapis.com/chart?cht=qr&chs=300x300&chld=M|0&chl=' + encodeURIComponent(text);
+  img.style.width = '240px';
+  img.style.height = '240px';
+  img.onload = function() {
+    document.getElementById('syncStatusQR').textContent = '二维码已生成（备用方案），请用手机扫描';
+  };
+  img.onerror = function() {
+    // 如果 Google API 也失败，显示文本让用户手动复制
+    container.innerHTML = '<div style="padding:20px;background:#f5f5f5;color:#333;word-break:break-all;font-size:12px;max-height:200px;overflow:auto;">' + text.substring(0, 500) + '...</div>';
+    document.getElementById('syncStatusQR').textContent = '二维码生成失败，请复制上方文本手动传输';
+  };
+  container.appendChild(img);
 }
 </script>
 </body>
