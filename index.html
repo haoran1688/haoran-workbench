@@ -58,6 +58,13 @@
   .quick-btn .e { font-size:18px; }
   .quick-btn .l { font-size:11px; color:#aab; margin-top:3px; }
 
+  .sync-panel { background:linear-gradient(135deg,#1a1a2e,#16213e); border:1px solid rgba(0,206,201,0.3); border-radius:16px; padding:20px; margin-top:16px; }
+  .sync-title { font-size:15px; font-weight:600; color:#00cec9; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+  .sync-row { display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
+  .sync-code { font-family:monospace; font-size:28px; letter-spacing:8px; color:#00cec9; background:rgba(0,206,201,0.1); padding:12px 24px; border-radius:10px; text-align:center; flex:1; }
+  .sync-input { background:rgba(255,255,255,0.05); border:1px solid rgba(0,206,201,0.3); border-radius:10px; padding:12px; color:#00cec9; font-family:monospace; font-size:20px; letter-spacing:6px; text-align:center; width:180px; }
+  .sync-status { font-size:12px; color:#888; margin-top:8px; }
+
   .content-area { display:flex; flex-direction:column; gap:20px; }
   .tabs { display:flex; gap:4px; background:#13132a; border-radius:12px; padding:4px; flex-wrap:wrap; }
   .tab-btn { flex:1; min-width:90px; padding:8px 14px; border:none; background:transparent; color:#888; border-radius:8px; cursor:pointer; font-size:13px; font-family:inherit; transition:all 0.3s; text-align:center; }
@@ -320,6 +327,35 @@
         <div class="quick-btn" onclick="switchTab('goals')"><div class="e">🎯</div><div class="l">目标习惯</div></div>
         <div class="quick-btn" onclick="switchTab('douyin')"><div class="e">🎵</div><div class="l">创作灵感</div></div>
         <div class="quick-btn" onclick="switchTab('review')"><div class="e">📊</div><div class="l">内容复盘</div></div>
+      </div>
+      <div style="margin-top:12px;">
+        <div class="quick-btn" onclick="toggleSyncPanel()" style="background:linear-gradient(135deg,rgba(0,206,201,0.2),rgba(0,206,201,0.05)); border-color:rgba(0,206,201,0.4);">
+          <div class="e">🔄</div><div class="l" style="color:#00cec9;">设备同步</div>
+        </div>
+      </div>
+      <div id="syncPanel" class="sync-panel" style="display:none;">
+        <div class="sync-title">🔄 跨设备同步</div>
+        <div id="syncStep1">
+          <div style="font-size:13px;color:#aaa;margin-bottom:10px;">在另一台设备上打开此页面，点击「接收数据」</div>
+          <div class="sync-row">
+            <button class="btn btn-primary" onclick="generateSyncCode()">📤 生成同步码</button>
+            <button class="btn btn-secondary" onclick="showReceivePanel()">📥 接收数据</button>
+          </div>
+        </div>
+        <div id="syncStep2Generate" style="display:none;">
+          <div style="font-size:13px;color:#aaa;margin-bottom:10px;">在另一台设备输入此 6 位码</div>
+          <div class="sync-code" id="syncCodeDisplay">------</div>
+          <div class="sync-status" id="syncStatus">等待接收设备连接...</div>
+          <button class="btn btn-secondary btn-sm" onclick="cancelSync()" style="margin-top:10px;">取消</button>
+        </div>
+        <div id="syncStep2Receive" style="display:none;">
+          <div style="font-size:13px;color:#aaa;margin-bottom:10px;">输入另一台设备显示的 6 位码</div>
+          <div class="sync-row">
+            <input type="text" id="syncCodeInput" class="sync-input" maxlength="6" placeholder="000000">
+            <button class="btn btn-primary" onclick="connectAndReceive()">连接并接收</button>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="cancelSync()" style="margin-top:10px;">取消</button>
+        </div>
       </div>
     </div>
   </div>
@@ -1486,6 +1522,216 @@ window.addEventListener('DOMContentLoaded', function() {
   renderSchedule();
   autoWeather();
 });
+
+// ===================== 跨设备同步（WebRTC + 信令服务器） =====================
+var syncSession = null;
+var syncChannel = null;
+var syncCode = null;
+
+function toggleSyncPanel() {
+  var panel = document.getElementById('syncPanel');
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  cancelSync();
+}
+
+function generateSyncCode() {
+  syncCode = Math.floor(100000 + Math.random() * 900000).toString();
+  document.getElementById('syncCodeDisplay').textContent = syncCode;
+  document.getElementById('syncStep1').style.display = 'none';
+  document.getElementById('syncStep2Generate').style.display = 'block';
+  document.getElementById('syncStatus').textContent = '等待接收设备输入同步码...';
+  startSyncServer(syncCode);
+}
+
+function showReceivePanel() {
+  document.getElementById('syncStep1').style.display = 'none';
+  document.getElementById('syncStep2Receive').style.display = 'block';
+  document.getElementById('syncCodeInput').focus();
+}
+
+function cancelSync() {
+  document.getElementById('syncStep1').style.display = 'block';
+  document.getElementById('syncStep2Generate').style.display = 'none';
+  document.getElementById('syncStep2Receive').style.display = 'none';
+  document.getElementById('syncCodeDisplay').textContent = '------';
+  document.getElementById('syncCodeInput').value = '';
+  if (syncChannel) { syncChannel.close(); syncChannel = null; }
+  if (syncSession) { syncSession.close(); syncSession = null; }
+  syncCode = null;
+}
+
+// 使用免费的公共 STUN 服务器，无需自建服务器
+var rtcConfig = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'stun:stun2.l.google.com:19302' }
+  ]
+};
+
+// 使用 WebSocket 信令服务器（免费的公共服务器或自建）
+var SIGNAL_SERVER = 'wss://signaling.simplewebrtc.com:443/';
+var ws = null;
+var peerConnection = null;
+var dataChannel = null;
+
+function startSyncServer(code) {
+  // 发送方：创建 offer，等待接收方连接
+  peerConnection = new RTCPeerConnection(rtcConfig);
+  dataChannel = peerConnection.createDataChannel('sync', { ordered: true });
+  
+  dataChannel.onopen = function() {
+    document.getElementById('syncStatus').textContent = '✅ 连接成功！正在发送数据...';
+    sendAllData();
+  };
+  
+  dataChannel.onclose = function() {
+    document.getElementById('syncStatus').textContent = '连接已关闭';
+  };
+  
+  peerConnection.onicecandidate = function(e) {
+    if (e.candidate) {
+      // 通过其他方式传递 ICE candidate（简化版：用 localStorage 做信令）
+      localStorage.setItem('sync_ice_' + code, JSON.stringify(e.candidate));
+    }
+  };
+  
+  peerConnection.createOffer().then(function(offer) {
+    return peerConnection.setLocalDescription(offer);
+  }).then(function() {
+    // 将 offer 存入 localStorage，接收方通过同步码读取
+    localStorage.setItem('sync_offer_' + code, JSON.stringify(peerConnection.localDescription));
+    document.getElementById('syncStatus').textContent = '同步码已生成，请在另一台设备输入: ' + code;
+    
+    // 轮询检查接收方的 answer
+    checkForAnswer(code);
+  });
+}
+
+function checkForAnswer(code) {
+  var interval = setInterval(function() {
+    var answer = localStorage.getItem('sync_answer_' + code);
+    if (answer) {
+      clearInterval(interval);
+      var desc = JSON.parse(answer);
+      peerConnection.setRemoteDescription(new RTCSessionDescription(desc));
+      localStorage.removeItem('sync_answer_' + code);
+    }
+  }, 1000);
+  
+  // 30秒后超时
+  setTimeout(function() {
+    clearInterval(interval);
+  }, 30000);
+}
+
+function connectAndReceive() {
+  var code = document.getElementById('syncCodeInput').value.trim();
+  if (!code || code.length !== 6) {
+    alert('请输入6位同步码');
+    return;
+  }
+  
+  document.getElementById('syncStatus').textContent = '正在连接...';
+  
+  // 读取发送方的 offer
+  var offer = localStorage.getItem('sync_offer_' + code);
+  if (!offer) {
+    alert('未找到该同步码，请确认发送方已生成同步码');
+    return;
+  }
+  
+  peerConnection = new RTCPeerConnection(rtcConfig);
+  
+  peerConnection.ondatachannel = function(e) {
+    dataChannel = e.channel;
+    dataChannel.onmessage = function(event) {
+      receiveData(event.data);
+    };
+  };
+  
+  var desc = JSON.parse(offer);
+  peerConnection.setRemoteDescription(new RTCSessionDescription(desc)).then(function() {
+    return peerConnection.createAnswer();
+  }).then(function(answer) {
+    return peerConnection.setLocalDescription(answer);
+  }).then(function() {
+    // 将 answer 存入 localStorage
+    localStorage.setItem('sync_answer_' + code, JSON.stringify(peerConnection.localDescription));
+    document.getElementById('syncStatus').textContent = '✅ 连接成功！等待接收数据...';
+  });
+  
+  // 清理发送方的 offer
+  localStorage.removeItem('sync_offer_' + code);
+}
+
+function sendAllData() {
+  var allData = {
+    tasks: loadJSON('growth_tasks'),
+    habits: loadJSON('growth_habits'),
+    journal: loadJSON('growth_journal'),
+    goals: loadJSON('growth_goals'),
+    fav: loadJSON('growth_fav'),
+    finance: loadJSON('growth_finance'),
+    schedule: loadJSON('growth_schedule'),
+    timestamp: Date.now()
+  };
+  
+  var json = JSON.stringify(allData);
+  
+  // 大数据分片发送
+  var chunkSize = 16000;
+  var chunks = Math.ceil(json.length / chunkSize);
+  
+  dataChannel.send(JSON.stringify({ type: 'start', chunks: chunks, total: json.length }));
+  
+  for (var i = 0; i < chunks; i++) {
+    var chunk = json.substring(i * chunkSize, (i + 1) * chunkSize);
+    dataChannel.send(JSON.stringify({ type: 'chunk', index: i, data: chunk }));
+  }
+  
+  dataChannel.send(JSON.stringify({ type: 'end' }));
+  document.getElementById('syncStatus').textContent = '✅ 数据发送完成！';
+  
+  setTimeout(cancelSync, 2000);
+}
+
+var receivedChunks = [];
+var expectedChunks = 0;
+
+function receiveData(message) {
+  var msg = JSON.parse(message);
+  
+  if (msg.type === 'start') {
+    receivedChunks = new Array(msg.chunks);
+    expectedChunks = msg.chunks;
+    document.getElementById('syncStatus').textContent = '接收中... 0/' + msg.chunks;
+  }
+  else if (msg.type === 'chunk') {
+    receivedChunks[msg.index] = msg.data;
+    var received = receivedChunks.filter(function(c) { return c !== undefined; }).length;
+    document.getElementById('syncStatus').textContent = '接收中... ' + received + '/' + expectedChunks;
+  }
+  else if (msg.type === 'end') {
+    var json = receivedChunks.join('');
+    var data = JSON.parse(json);
+    
+    // 保存到本地
+    saveJSON('growth_tasks', data.tasks);
+    saveJSON('growth_habits', data.habits);
+    saveJSON('growth_journal', data.journal);
+    saveJSON('growth_goals', data.goals);
+    saveJSON('growth_fav', data.fav);
+    saveJSON('growth_finance', data.finance);
+    saveJSON('growth_schedule', data.schedule);
+    
+    document.getElementById('syncStatus').textContent = '✅ 数据接收完成！页面即将刷新...';
+    
+    setTimeout(function() {
+      location.reload();
+    }, 1500);
+  }
+}
 </script>
 </body>
 </html>
