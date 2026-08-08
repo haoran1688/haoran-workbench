@@ -686,7 +686,16 @@ function localDateKey(d) {
   var y = d.getFullYear(); var m = ('0' + (d.getMonth() + 1)).slice(-2); var day = ('0' + d.getDate()).slice(-2);
   return y + '-' + m + '-' + day;
 }
-function loadJSON(key, def) { try { var s = localStorage.getItem(key); if (s) { var p = JSON.parse(s); if (p) return p; } } catch (e) {} return JSON.parse(JSON.stringify(def)); }
+function loadJSON(key, def) { 
+  try { 
+    var s = localStorage.getItem(key); 
+    if (s) { 
+      var p = JSON.parse(s); 
+      if (p !== null && p !== undefined) return p; 
+    } 
+  } catch (e) {} 
+  return def !== undefined ? JSON.parse(JSON.stringify(def)) : null; 
+}
 function saveJSON(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {} }
 function dayOfYear() { var d = new Date(); var start = new Date(d.getFullYear(), 0, 0); return Math.floor((d - start) / 86400000); }
 
@@ -1575,19 +1584,22 @@ function decompressData(base64) {
 }
 
 function generateQRCode() {
+  console.log('generateQRCode called');
   var allData = {
-    tasks: loadJSON('growth_tasks'),
-    habits: loadJSON('growth_habits'),
-    journal: loadJSON('growth_journal'),
-    goals: loadJSON('growth_goals'),
-    fav: loadJSON('growth_fav'),
-    finance: loadJSON('growth_finance'),
-    schedule: loadJSON('growth_schedule'),
+    tasks: loadJSON('growth_tasks', []),
+    habits: loadJSON('growth_habits', {}),
+    journal: loadJSON('growth_journal', []),
+    goals: loadJSON('growth_goals', []),
+    fav: loadJSON('growth_fav', []),
+    finance: loadJSON('growth_finance', { transactions: [] }),
+    schedule: loadJSON('growth_schedule', { goals: [], monthly: [] }),
     timestamp: Date.now(),
     version: '1.0'
   };
+  console.log('Data loaded:', allData);
   
   var compressed = compressData(allData);
+  console.log('Compressed length:', compressed.length);
   
   // 检查数据大小，如果太大提示用户
   if (compressed.length > 2000) {
@@ -1598,33 +1610,10 @@ function generateQRCode() {
   
   document.getElementById('syncStep1').style.display = 'none';
   document.getElementById('syncStep2QR').style.display = 'block';
+  document.getElementById('syncStatusQR').textContent = '正在加载二维码库...';
   
-  // 动态加载 qrcode.js 并生成
-  loadScript('https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js', function() {
-    if (typeof QRCode === 'undefined') {
-      document.getElementById('syncStatusQR').textContent = '二维码库加载失败，尝试备用方案...';
-      generateQRCodeFallback('GROWTH:' + compressed);
-      return;
-    }
-    document.getElementById('qrcodeContainer').innerHTML = '';
-    try {
-      new QRCode(document.getElementById('qrcodeContainer'), {
-        text: 'GROWTH:' + compressed,
-        width: 240,
-        height: 240,
-        colorDark: '#000000',
-        colorLight: '#ffffff',
-        correctLevel: QRCode.CorrectLevel.M
-      });
-      document.getElementById('syncStatusQR').textContent = '二维码已生成，请用手机扫描';
-    } catch(e) {
-      document.getElementById('syncStatusQR').textContent = '生成失败: ' + e.message;
-    }
-  }, function() {
-    // 加载失败，使用备用方案
-    document.getElementById('syncStatusQR').textContent = '使用备用二维码方案...';
-    generateQRCodeFallback('GROWTH:' + compressed);
-  });
+  // 直接使用 Google Chart API，不依赖 CDN
+  generateQRCodeFallback('GROWTH:' + compressed);
 }
 
 function startScan() {
@@ -1709,21 +1698,41 @@ function loadScript(url, onSuccess, onError) {
   document.head.appendChild(script);
 }
 
-// 备用二维码方案：使用 Google Chart API 生成
+// 使用 Google Chart API 生成二维码（主要方案）
 function generateQRCodeFallback(text) {
+  console.log('generateQRCodeFallback called, text length:', text.length);
   var container = document.getElementById('qrcodeContainer');
   container.innerHTML = '';
+  
+  // 如果数据太大，截断并提示
+  var displayText = text;
+  if (text.length > 1500) {
+    displayText = text.substring(0, 1500);
+    document.getElementById('syncStatusQR').textContent = '警告：数据量过大，已截断。建议减少同步内容。';
+  }
+  
   var img = document.createElement('img');
-  img.src = 'https://chart.googleapis.com/chart?cht=qr&chs=300x300&chld=M|0&chl=' + encodeURIComponent(text);
+  img.src = 'https://quickchart.io/chart?cht=qr&chs=300x300&chld=M&chl=' + encodeURIComponent(displayText);
   img.style.width = '240px';
   img.style.height = '240px';
+  img.style.display = 'block';
   img.onload = function() {
-    document.getElementById('syncStatusQR').textContent = '二维码已生成（备用方案），请用手机扫描';
+    document.getElementById('syncStatusQR').textContent = '✅ 二维码已生成，请用手机扫描';
   };
   img.onerror = function() {
-    // 如果 Google API 也失败，显示文本让用户手动复制
-    container.innerHTML = '<div style="padding:20px;background:#f5f5f5;color:#333;word-break:break-all;font-size:12px;max-height:200px;overflow:auto;">' + text.substring(0, 500) + '...</div>';
-    document.getElementById('syncStatusQR').textContent = '二维码生成失败，请复制上方文本手动传输';
+    // 尝试另一个 API
+    var img2 = document.createElement('img');
+    img2.src = 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=' + encodeURIComponent(displayText);
+    img2.style.width = '240px';
+    img2.style.height = '240px';
+    img2.onload = function() {
+      document.getElementById('syncStatusQR').textContent = '✅ 二维码已生成（备用API），请用手机扫描';
+    };
+    img2.onerror = function() {
+      container.innerHTML = '<div style="padding:20px;background:#ff6b6b;color:#fff;border-radius:8px;">二维码生成失败，请检查网络连接</div>';
+      document.getElementById('syncStatusQR').textContent = '生成失败，请重试';
+    };
+    container.appendChild(img2);
   };
   container.appendChild(img);
 }
