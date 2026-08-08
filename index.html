@@ -334,26 +334,27 @@
         </div>
       </div>
       <div id="syncPanel" class="sync-panel" style="display:none;">
-        <div class="sync-title">🔄 跨设备同步</div>
+        <div class="sync-title">🔄 跨设备同步（二维码）</div>
         <div id="syncStep1">
-          <div style="font-size:13px;color:#aaa;margin-bottom:10px;">在另一台设备上打开此页面，点击「接收数据」</div>
+          <div style="font-size:13px;color:#aaa;margin-bottom:10px;">选择传输方式：电脑生成二维码，手机扫码接收</div>
           <div class="sync-row">
-            <button class="btn btn-primary" onclick="generateSyncCode()">📤 生成同步码</button>
-            <button class="btn btn-secondary" onclick="showReceivePanel()">📥 接收数据</button>
+            <button class="btn btn-primary" onclick="generateQRCode()">📤 生成二维码</button>
+            <button class="btn btn-secondary" onclick="startScan()">📷 扫码接收</button>
           </div>
         </div>
-        <div id="syncStep2Generate" style="display:none;">
-          <div style="font-size:13px;color:#aaa;margin-bottom:10px;">在另一台设备输入此 6 位码</div>
-          <div class="sync-code" id="syncCodeDisplay">------</div>
-          <div class="sync-status" id="syncStatus">等待接收设备连接...</div>
-          <button class="btn btn-secondary btn-sm" onclick="cancelSync()" style="margin-top:10px;">取消</button>
+        <div id="syncStep2QR" style="display:none;">
+          <div style="font-size:13px;color:#aaa;margin-bottom:10px;">用手机扫描下方二维码（数据已压缩）</div>
+          <div id="qrcodeContainer" style="background:#fff;padding:16px;border-radius:10px;display:inline-block;"></div>
+          <div class="sync-status" id="syncStatusQR">请尽快扫码，二维码 5 分钟后失效</div>
+          <button class="btn btn-secondary btn-sm" onclick="cancelSync()" style="margin-top:10px;">完成</button>
         </div>
-        <div id="syncStep2Receive" style="display:none;">
-          <div style="font-size:13px;color:#aaa;margin-bottom:10px;">输入另一台设备显示的 6 位码</div>
-          <div class="sync-row">
-            <input type="text" id="syncCodeInput" class="sync-input" maxlength="6" placeholder="000000">
-            <button class="btn btn-primary" onclick="connectAndReceive()">连接并接收</button>
+        <div id="syncStep2Scan" style="display:none;">
+          <div style="font-size:13px;color:#aaa;margin-bottom:10px;">对准电脑屏幕上的二维码</div>
+          <div id="scannerContainer" style="width:280px;height:210px;background:#000;border-radius:10px;overflow:hidden;position:relative;">
+            <video id="scanVideo" style="width:100%;height:100%;object-fit:cover;" autoplay playsinline></video>
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:180px;height:180px;border:2px solid #00cec9;border-radius:8px;pointer-events:none;"></div>
           </div>
+          <div class="sync-status" id="scanStatus">正在启动相机...</div>
           <button class="btn btn-secondary btn-sm" onclick="cancelSync()" style="margin-top:10px;">取消</button>
         </div>
       </div>
@@ -1523,10 +1524,8 @@ window.addEventListener('DOMContentLoaded', function() {
   autoWeather();
 });
 
-// ===================== 跨设备同步（WebRTC + 信令服务器） =====================
-var syncSession = null;
-var syncChannel = null;
-var syncCode = null;
+// ===================== 跨设备同步（二维码传输） =====================
+// 使用 qrcode.js 库生成二维码，jsQR 库扫描
 
 function toggleSyncPanel() {
   var panel = document.getElementById('syncPanel');
@@ -1534,138 +1533,48 @@ function toggleSyncPanel() {
   cancelSync();
 }
 
-function generateSyncCode() {
-  syncCode = Math.floor(100000 + Math.random() * 900000).toString();
-  document.getElementById('syncCodeDisplay').textContent = syncCode;
-  document.getElementById('syncStep1').style.display = 'none';
-  document.getElementById('syncStep2Generate').style.display = 'block';
-  document.getElementById('syncStatus').textContent = '等待接收设备输入同步码...';
-  startSyncServer(syncCode);
-}
-
-function showReceivePanel() {
-  document.getElementById('syncStep1').style.display = 'none';
-  document.getElementById('syncStep2Receive').style.display = 'block';
-  document.getElementById('syncCodeInput').focus();
-}
-
 function cancelSync() {
   document.getElementById('syncStep1').style.display = 'block';
-  document.getElementById('syncStep2Generate').style.display = 'none';
-  document.getElementById('syncStep2Receive').style.display = 'none';
-  document.getElementById('syncCodeDisplay').textContent = '------';
-  document.getElementById('syncCodeInput').value = '';
-  if (syncChannel) { syncChannel.close(); syncChannel = null; }
-  if (syncSession) { syncSession.close(); syncSession = null; }
-  syncCode = null;
-}
-
-// 使用免费的公共 STUN 服务器，无需自建服务器
-var rtcConfig = {
-  iceServers: [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' }
-  ]
-};
-
-// 使用 WebSocket 信令服务器（免费的公共服务器或自建）
-var SIGNAL_SERVER = 'wss://signaling.simplewebrtc.com:443/';
-var ws = null;
-var peerConnection = null;
-var dataChannel = null;
-
-function startSyncServer(code) {
-  // 发送方：创建 offer，等待接收方连接
-  peerConnection = new RTCPeerConnection(rtcConfig);
-  dataChannel = peerConnection.createDataChannel('sync', { ordered: true });
-  
-  dataChannel.onopen = function() {
-    document.getElementById('syncStatus').textContent = '✅ 连接成功！正在发送数据...';
-    sendAllData();
-  };
-  
-  dataChannel.onclose = function() {
-    document.getElementById('syncStatus').textContent = '连接已关闭';
-  };
-  
-  peerConnection.onicecandidate = function(e) {
-    if (e.candidate) {
-      // 通过其他方式传递 ICE candidate（简化版：用 localStorage 做信令）
-      localStorage.setItem('sync_ice_' + code, JSON.stringify(e.candidate));
-    }
-  };
-  
-  peerConnection.createOffer().then(function(offer) {
-    return peerConnection.setLocalDescription(offer);
-  }).then(function() {
-    // 将 offer 存入 localStorage，接收方通过同步码读取
-    localStorage.setItem('sync_offer_' + code, JSON.stringify(peerConnection.localDescription));
-    document.getElementById('syncStatus').textContent = '同步码已生成，请在另一台设备输入: ' + code;
-    
-    // 轮询检查接收方的 answer
-    checkForAnswer(code);
-  });
-}
-
-function checkForAnswer(code) {
-  var interval = setInterval(function() {
-    var answer = localStorage.getItem('sync_answer_' + code);
-    if (answer) {
-      clearInterval(interval);
-      var desc = JSON.parse(answer);
-      peerConnection.setRemoteDescription(new RTCSessionDescription(desc));
-      localStorage.removeItem('sync_answer_' + code);
-    }
-  }, 1000);
-  
-  // 30秒后超时
-  setTimeout(function() {
-    clearInterval(interval);
-  }, 30000);
-}
-
-function connectAndReceive() {
-  var code = document.getElementById('syncCodeInput').value.trim();
-  if (!code || code.length !== 6) {
-    alert('请输入6位同步码');
-    return;
+  document.getElementById('syncStep2QR').style.display = 'none';
+  document.getElementById('syncStep2Scan').style.display = 'none';
+  document.getElementById('qrcodeContainer').innerHTML = '';
+  var video = document.getElementById('scanVideo');
+  if (video && video.srcObject) {
+    video.srcObject.getTracks().forEach(function(t) { t.stop(); });
+    video.srcObject = null;
   }
-  
-  document.getElementById('syncStatus').textContent = '正在连接...';
-  
-  // 读取发送方的 offer
-  var offer = localStorage.getItem('sync_offer_' + code);
-  if (!offer) {
-    alert('未找到该同步码，请确认发送方已生成同步码');
-    return;
-  }
-  
-  peerConnection = new RTCPeerConnection(rtcConfig);
-  
-  peerConnection.ondatachannel = function(e) {
-    dataChannel = e.channel;
-    dataChannel.onmessage = function(event) {
-      receiveData(event.data);
-    };
-  };
-  
-  var desc = JSON.parse(offer);
-  peerConnection.setRemoteDescription(new RTCSessionDescription(desc)).then(function() {
-    return peerConnection.createAnswer();
-  }).then(function(answer) {
-    return peerConnection.setLocalDescription(answer);
-  }).then(function() {
-    // 将 answer 存入 localStorage
-    localStorage.setItem('sync_answer_' + code, JSON.stringify(peerConnection.localDescription));
-    document.getElementById('syncStatus').textContent = '✅ 连接成功！等待接收数据...';
-  });
-  
-  // 清理发送方的 offer
-  localStorage.removeItem('sync_offer_' + code);
 }
 
-function sendAllData() {
+// 简单的 LZ 压缩，减少二维码数据量
+function compressData(data) {
+  var json = JSON.stringify(data);
+  // 使用 encodeURIComponent + btoa 进行 base64 编码
+  try {
+    return btoa(encodeURIComponent(json).replace(/%([0-9A-F]{2})/g, function(m, p) {
+      return String.fromCharCode('0x' + p);
+    }));
+  } catch(e) {
+    return btoa(json);
+  }
+}
+
+function decompressData(base64) {
+  try {
+    var decoded = atob(base64);
+    try {
+      return JSON.parse(decodeURIComponent(decoded.split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      }).join('')));
+    } catch(e) {
+      return JSON.parse(decoded);
+    }
+  } catch(e) {
+    alert('二维码数据解析失败，请重试');
+    return null;
+  }
+}
+
+function generateQRCode() {
   var allData = {
     tasks: loadJSON('growth_tasks'),
     habits: loadJSON('growth_habits'),
@@ -1674,63 +1583,114 @@ function sendAllData() {
     fav: loadJSON('growth_fav'),
     finance: loadJSON('growth_finance'),
     schedule: loadJSON('growth_schedule'),
-    timestamp: Date.now()
+    timestamp: Date.now(),
+    version: '1.0'
   };
   
-  var json = JSON.stringify(allData);
+  var compressed = compressData(allData);
   
-  // 大数据分片发送
-  var chunkSize = 16000;
-  var chunks = Math.ceil(json.length / chunkSize);
-  
-  dataChannel.send(JSON.stringify({ type: 'start', chunks: chunks, total: json.length }));
-  
-  for (var i = 0; i < chunks; i++) {
-    var chunk = json.substring(i * chunkSize, (i + 1) * chunkSize);
-    dataChannel.send(JSON.stringify({ type: 'chunk', index: i, data: chunk }));
+  // 检查数据大小，如果太大提示用户
+  if (compressed.length > 2000) {
+    if (!confirm('数据量较大（' + compressed.length + ' 字符），生成的二维码可能较难扫描。建议先导出重要数据，或分多次同步。是否继续？')) {
+      return;
+    }
   }
   
-  dataChannel.send(JSON.stringify({ type: 'end' }));
-  document.getElementById('syncStatus').textContent = '✅ 数据发送完成！';
+  document.getElementById('syncStep1').style.display = 'none';
+  document.getElementById('syncStep2QR').style.display = 'block';
   
-  setTimeout(cancelSync, 2000);
+  // 动态加载 qrcode.js 并生成
+  loadScript('https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js', function() {
+    document.getElementById('qrcodeContainer').innerHTML = '';
+    new QRCode(document.getElementById('qrcodeContainer'), {
+      text: 'GROWTH:' + compressed,
+      width: 240,
+      height: 240,
+      colorDark: '#000000',
+      colorLight: '#ffffff',
+      correctLevel: QRCode.CorrectLevel.M
+    });
+    document.getElementById('syncStatusQR').textContent = '二维码已生成，请用手机扫描（有效期5分钟）';
+  });
 }
 
-var receivedChunks = [];
-var expectedChunks = 0;
-
-function receiveData(message) {
-  var msg = JSON.parse(message);
+function startScan() {
+  document.getElementById('syncStep1').style.display = 'none';
+  document.getElementById('syncStep2Scan').style.display = 'block';
+  document.getElementById('scanStatus').textContent = '正在请求相机权限...';
   
-  if (msg.type === 'start') {
-    receivedChunks = new Array(msg.chunks);
-    expectedChunks = msg.chunks;
-    document.getElementById('syncStatus').textContent = '接收中... 0/' + msg.chunks;
-  }
-  else if (msg.type === 'chunk') {
-    receivedChunks[msg.index] = msg.data;
-    var received = receivedChunks.filter(function(c) { return c !== undefined; }).length;
-    document.getElementById('syncStatus').textContent = '接收中... ' + received + '/' + expectedChunks;
-  }
-  else if (msg.type === 'end') {
-    var json = receivedChunks.join('');
-    var data = JSON.parse(json);
+  // 动态加载 jsQR
+  loadScript('https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js', function() {
+    initScanner();
+  });
+}
+
+function initScanner() {
+  var video = document.getElementById('scanVideo');
+  
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+    .then(function(stream) {
+      video.srcObject = stream;
+      video.play();
+      document.getElementById('scanStatus').textContent = '请将二维码对准框内';
+      scanFrame();
+    })
+    .catch(function(err) {
+      document.getElementById('scanStatus').textContent = '无法访问相机: ' + err.message;
+    });
+}
+
+function scanFrame() {
+  var video = document.getElementById('scanVideo');
+  if (!video || !video.srcObject) return;
+  
+  var canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth || 640;
+  canvas.height = video.videoHeight || 480;
+  var ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  
+  var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  var code = jsQR(imageData.data, imageData.width, imageData.height);
+  
+  if (code && code.data && code.data.startsWith('GROWTH:')) {
+    // 停止扫描
+    video.srcObject.getTracks().forEach(function(t) { t.stop(); });
+    video.srcObject = null;
     
-    // 保存到本地
-    saveJSON('growth_tasks', data.tasks);
-    saveJSON('growth_habits', data.habits);
-    saveJSON('growth_journal', data.journal);
-    saveJSON('growth_goals', data.goals);
-    saveJSON('growth_fav', data.fav);
-    saveJSON('growth_finance', data.finance);
-    saveJSON('growth_schedule', data.schedule);
+    document.getElementById('scanStatus').textContent = '正在解析数据...';
     
-    document.getElementById('syncStatus').textContent = '✅ 数据接收完成！页面即将刷新...';
+    var base64 = code.data.substring(7);
+    var data = decompressData(base64);
     
-    setTimeout(function() {
-      location.reload();
-    }, 1500);
+    if (data) {
+      // 保存数据
+      saveJSON('growth_tasks', data.tasks || []);
+      saveJSON('growth_habits', data.habits || {});
+      saveJSON('growth_journal', data.journal || []);
+      saveJSON('growth_goals', data.goals || []);
+      saveJSON('growth_fav', data.fav || []);
+      saveJSON('growth_finance', data.finance || { transactions: [] });
+      saveJSON('growth_schedule', data.schedule || { goals: [], monthly: [] });
+      
+      document.getElementById('scanStatus').textContent = '✅ 数据同步成功！页面即将刷新...';
+      setTimeout(function() { location.reload(); }, 1500);
+    }
+  } else {
+    requestAnimationFrame(scanFrame);
   }
+}
+
+function loadScript(url, callback) {
+  if (document.querySelector('script[src="' + url + '"]')) {
+    if (callback) callback();
+    return;
+  }
+  var script = document.createElement('script');
+  script.src = url;
+  script.onload = callback;
+  script.onerror = function() { alert('加载失败，请检查网络'); };
+  document.head.appendChild(script);
 }
 </script>
 </body>
