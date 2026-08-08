@@ -1554,31 +1554,17 @@ function cancelSync() {
   }
 }
 
-// 简单的 LZ 压缩，减少二维码数据量
+// 简化的数据编码：纯 Base64，避免编码问题
 function compressData(data) {
-  var json = JSON.stringify(data);
-  // 使用 encodeURIComponent + btoa 进行 base64 编码
-  try {
-    return btoa(encodeURIComponent(json).replace(/%([0-9A-F]{2})/g, function(m, p) {
-      return String.fromCharCode('0x' + p);
-    }));
-  } catch(e) {
-    return btoa(json);
-  }
+  return btoa(JSON.stringify(data));
 }
 
 function decompressData(base64) {
   try {
-    var decoded = atob(base64);
-    try {
-      return JSON.parse(decodeURIComponent(decoded.split('').map(function(c) {
-        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-      }).join('')));
-    } catch(e) {
-      return JSON.parse(decoded);
-    }
+    return JSON.parse(atob(base64));
   } catch(e) {
-    alert('二维码数据解析失败，请重试');
+    console.error('Decode error:', e);
+    alert('二维码数据解析失败: ' + e.message);
     return null;
   }
 }
@@ -1655,7 +1641,15 @@ function scanFrame() {
   var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   var code = jsQR(imageData.data, imageData.width, imageData.height);
   
-  if (code && code.data && code.data.startsWith('GROWTH:')) {
+  if (code && code.data) {
+    console.log('QR Code detected:', code.data.substring(0, 50) + '...');
+    
+    if (!code.data.startsWith('GROWTH:')) {
+      document.getElementById('scanStatus').textContent = '识别到二维码，但不是本应用的数据格式';
+      requestAnimationFrame(scanFrame);
+      return;
+    }
+    
     // 停止扫描
     video.srcObject.getTracks().forEach(function(t) { t.stop(); });
     video.srcObject = null;
@@ -1663,7 +1657,10 @@ function scanFrame() {
     document.getElementById('scanStatus').textContent = '正在解析数据...';
     
     var base64 = code.data.substring(7);
+    console.log('Base64 length:', base64.length);
+    
     var data = decompressData(base64);
+    console.log('Decompressed data:', data);
     
     if (data) {
       // 保存数据
@@ -1677,6 +1674,8 @@ function scanFrame() {
       
       document.getElementById('scanStatus').textContent = '✅ 数据同步成功！页面即将刷新...';
       setTimeout(function() { location.reload(); }, 1500);
+    } else {
+      document.getElementById('scanStatus').textContent = '❌ 数据解析失败，请重试';
     }
   } else {
     requestAnimationFrame(scanFrame);
