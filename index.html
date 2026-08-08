@@ -1554,14 +1554,26 @@ function cancelSync() {
   }
 }
 
-// 简化的数据编码：纯 Base64，避免编码问题
+// 数据编码：处理中文的 Base64
 function compressData(data) {
-  return btoa(JSON.stringify(data));
+  // 先用 encodeURIComponent 处理中文，再转 base64
+  var json = JSON.stringify(data);
+  var encoded = encodeURIComponent(json);
+  var base64 = '';
+  for (var i = 0; i < encoded.length; i++) {
+    base64 += String.fromCharCode(encoded.charCodeAt(i));
+  }
+  return btoa(base64);
 }
 
 function decompressData(base64) {
   try {
-    return JSON.parse(atob(base64));
+    var decoded = atob(base64);
+    var uri = '';
+    for (var i = 0; i < decoded.length; i++) {
+      uri += '%' + ('00' + decoded.charCodeAt(i).toString(16)).slice(-2);
+    }
+    return JSON.parse(decodeURIComponent(uri));
   } catch(e) {
     console.error('Decode error:', e);
     alert('二维码数据解析失败: ' + e.message);
