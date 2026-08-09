@@ -334,18 +334,45 @@
         </div>
       </div>
       <div id="syncPanel" class="sync-panel" style="display:none;">
-        <div class="sync-title">🔄 跨设备同步（二维码）</div>
+        <div class="sync-title">🔄 跨设备同步</div>
         <div id="syncStep1">
-          <div style="font-size:13px;color:#aaa;margin-bottom:10px;">选择传输方式：电脑生成二维码，手机扫码接收</div>
+          <div style="font-size:13px;color:#aaa;margin-bottom:10px;">☁️ 云端同步（推荐）：</div>
           <div class="sync-row">
-            <button class="btn btn-primary" onclick="generateQRCode()">📤 生成二维码</button>
-            <button class="btn btn-secondary" onclick="startScan()">📷 扫码接收</button>
+            <button class="btn btn-primary" onclick="uploadToGist()">📤 上传到云端</button>
+            <button class="btn btn-secondary" onclick="downloadFromGist()">📥 从云端下载</button>
+          </div>
+          <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.1);">
+            <div style="font-size:12px;color:#888;margin-bottom:8px;">💾 本地备份：</div>
+            <div class="sync-row">
+              <button class="btn btn-secondary btn-sm" onclick="exportDataFile()">📤 导出文件</button>
+              <button class="btn btn-secondary btn-sm" onclick="showImportPanel()">📥 导入文件</button>
+            </div>
+          </div>
+          <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.1);">
+            <div style="font-size:12px;color:#888;margin-bottom:8px;">📷 二维码（数据量小可用）：</div>
+            <div class="sync-row">
+              <button class="btn btn-secondary btn-sm" onclick="generateQRCode()">生成二维码</button>
+              <button class="btn btn-secondary btn-sm" onclick="startScan()">扫码接收</button>
+            </div>
+          </div>
+        </div>
+        <div id="syncStepGist" style="display:none;">
+          <div style="font-size:13px;color:#aaa;margin-bottom:10px;">☁️ 云端同步</div>
+          <div id="gistTokenInput" style="margin-bottom:10px;">
+            <input type="password" id="githubToken" placeholder="输入 GitHub Token" style="width:100%;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.3);color:#fff;font-size:13px;">
+            <div style="font-size:11px;color:#888;margin-top:4px;">Token 只保存在本地浏览器</div>
+          </div>
+          <div id="gistStatus" class="sync-status" style="margin-bottom:10px;"></div>
+          <div class="sync-row">
+            <button class="btn btn-primary btn-sm" onclick="uploadToGist()">📤 上传</button>
+            <button class="btn btn-secondary btn-sm" onclick="downloadFromGist()">📥 下载</button>
+            <button class="btn btn-secondary btn-sm" onclick="cancelSync()">返回</button>
           </div>
         </div>
         <div id="syncStep2QR" style="display:none;">
-          <div style="font-size:13px;color:#aaa;margin-bottom:10px;">用手机扫描下方二维码（数据已压缩）</div>
+          <div style="font-size:13px;color:#aaa;margin-bottom:10px;">用手机扫描下方二维码</div>
           <div id="qrcodeContainer" style="background:#fff;padding:16px;border-radius:10px;display:inline-block;"></div>
-          <div class="sync-status" id="syncStatusQR">请尽快扫码，二维码 5 分钟后失效</div>
+          <div class="sync-status" id="syncStatusQR">请尽快扫码</div>
           <button class="btn btn-secondary btn-sm" onclick="cancelSync()" style="margin-top:10px;">完成</button>
         </div>
         <div id="syncStep2Scan" style="display:none;">
@@ -355,6 +382,13 @@
             <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:180px;height:180px;border:2px solid #00cec9;border-radius:8px;pointer-events:none;"></div>
           </div>
           <div class="sync-status" id="scanStatus">正在启动相机...</div>
+          <button class="btn btn-secondary btn-sm" onclick="cancelSync()" style="margin-top:10px;">取消</button>
+        </div>
+        <div id="syncStepImport" style="display:none;">
+          <div style="font-size:13px;color:#aaa;margin-bottom:10px;">选择之前导出的 .json 文件</div>
+          <input type="file" id="importFileInput" accept=".json" style="display:none;" onchange="importDataFile(this)">
+          <button class="btn btn-primary" onclick="document.getElementById('importFileInput').click()">📁 选择文件</button>
+          <div class="sync-status" id="importStatus" style="margin-top:10px;"></div>
           <button class="btn btn-secondary btn-sm" onclick="cancelSync()" style="margin-top:10px;">取消</button>
         </div>
       </div>
@@ -1544,14 +1578,241 @@ function toggleSyncPanel() {
 
 function cancelSync() {
   document.getElementById('syncStep1').style.display = 'block';
+  document.getElementById('syncStepGist').style.display = 'none';
   document.getElementById('syncStep2QR').style.display = 'none';
   document.getElementById('syncStep2Scan').style.display = 'none';
+  document.getElementById('syncStepImport').style.display = 'none';
   document.getElementById('qrcodeContainer').innerHTML = '';
   var video = document.getElementById('scanVideo');
   if (video && video.srcObject) {
     video.srcObject.getTracks().forEach(function(t) { t.stop(); });
     video.srcObject = null;
   }
+}
+
+// ===================== GitHub Gist 云端同步 =====================
+var GIST_ID = localStorage.getItem('haoran_gist_id');
+
+function getGitHubToken() {
+  return localStorage.getItem('haoran_github_token');
+}
+
+function setGitHubToken(token) {
+  localStorage.setItem('haoran_github_token', token);
+}
+
+function getAllData() {
+  return {
+    tasks: loadJSON('growth_tasks', []),
+    habits: loadJSON('growth_habits', {}),
+    journal: loadJSON('growth_journal', []),
+    goals: loadJSON('growth_goals', []),
+    fav: loadJSON('growth_fav', []),
+    finance: loadJSON('growth_finance', { transactions: [] }),
+    schedule: loadJSON('growth_schedule', { goals: [], monthly: [] }),
+    timestamp: Date.now(),
+    version: '1.0',
+    app: 'haoran-workbench'
+  };
+}
+
+function saveAllData(data) {
+  saveJSON('growth_tasks', data.tasks || []);
+  saveJSON('growth_habits', data.habits || {});
+  saveJSON('growth_journal', data.journal || []);
+  saveJSON('growth_goals', data.goals || []);
+  saveJSON('growth_fav', data.fav || []);
+  saveJSON('growth_finance', data.finance || { transactions: [] });
+  saveJSON('growth_schedule', data.schedule || { goals: [], monthly: [] });
+}
+
+function showGistPanel() {
+  document.getElementById('syncStep1').style.display = 'none';
+  document.getElementById('syncStepGist').style.display = 'block';
+  
+  // 如果已保存 token，填入输入框
+  var savedToken = getGitHubToken();
+  if (savedToken) {
+    document.getElementById('githubToken').value = savedToken;
+  }
+  
+  if (GIST_ID) {
+    document.getElementById('gistStatus').textContent = '已有云端备份，可上传或下载';
+  } else {
+    document.getElementById('gistStatus').textContent = '首次使用请先上传';
+  }
+}
+
+function uploadToGist() {
+  var token = document.getElementById('githubToken').value.trim();
+  if (!token) {
+    document.getElementById('gistStatus').textContent = '❌ 请先输入 GitHub Token';
+    return;
+  }
+  
+  // 保存 token 到本地
+  setGitHubToken(token);
+  
+  document.getElementById('gistStatus').textContent = '正在上传...';
+  
+  var data = getAllData();
+  var content = JSON.stringify(data, null, 2);
+  
+  var url = GIST_ID 
+    ? 'https://api.github.com/gists/' + GIST_ID
+    : 'https://api.github.com/gists';
+  
+  var method = GIST_ID ? 'PATCH' : 'POST';
+  
+  fetch(url, {
+    method: method,
+    headers: {
+      'Authorization': 'token ' + token,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      description: '浩然工作台数据备份',
+      public: false,
+      files: {
+        'haoran-workbench-data.json': {
+          content: content
+        }
+      }
+    })
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(result) {
+    if (result.id) {
+      GIST_ID = result.id;
+      localStorage.setItem('haoran_gist_id', GIST_ID);
+      var time = new Date().toLocaleString();
+      document.getElementById('gistStatus').innerHTML = '✅ 上传成功！<br>时间：' + time + '<br>任务：' + (data.tasks ? data.tasks.length : 0) + ' 条';
+    } else {
+      document.getElementById('gistStatus').textContent = '❌ 上传失败：' + (result.message || '未知错误');
+    }
+  })
+  .catch(function(err) {
+    document.getElementById('gistStatus').textContent = '❌ 网络错误：' + err.message;
+  });
+}
+
+function downloadFromGist() {
+  document.getElementById('syncStep1').style.display = 'none';
+  document.getElementById('syncStepGist').style.display = 'block';
+  
+  if (!GIST_ID) {
+    document.getElementById('gistStatus').textContent = '❌ 还没有云端数据，请先上传一次';
+    return;
+  }
+  
+  document.getElementById('gistStatus').textContent = '正在下载...';
+  
+  fetch('https://api.github.com/gists/' + GIST_ID, {
+    headers: {
+      'Authorization': 'token ' + GITHUB_TOKEN
+    }
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(result) {
+    if (result.files && result.files['haoran-workbench-data.json']) {
+      var content = result.files['haoran-workbench-data.json'].content;
+      var data = JSON.parse(content);
+      
+      if (data.app !== 'haoran-workbench') {
+        document.getElementById('gistStatus').textContent = '❌ 数据格式不正确';
+        return;
+      }
+      
+      saveAllData(data);
+      
+      var time = new Date(data.timestamp).toLocaleString();
+      document.getElementById('gistStatus').innerHTML = '✅ 下载成功！<br>备份时间：' + time + '<br>任务：' + (data.tasks ? data.tasks.length : 0) + ' 条<br>页面即将刷新...';
+      
+      setTimeout(function() { location.reload(); }, 2000);
+    } else {
+      document.getElementById('gistStatus').textContent = '❌ 没有找到数据文件';
+    }
+  })
+  .catch(function(err) {
+    document.getElementById('gistStatus').textContent = '❌ 网络错误：' + err.message;
+  });
+}
+
+// ===================== 文件导出/导入同步 =====================
+function exportDataFile() {
+  var allData = {
+    tasks: loadJSON('growth_tasks', []),
+    habits: loadJSON('growth_habits', {}),
+    journal: loadJSON('growth_journal', []),
+    goals: loadJSON('growth_goals', []),
+    fav: loadJSON('growth_fav', []),
+    finance: loadJSON('growth_finance', { transactions: [] }),
+    schedule: loadJSON('growth_schedule', { goals: [], monthly: [] }),
+    timestamp: Date.now(),
+    version: '1.0',
+    app: 'haoran-workbench'
+  };
+  
+  var dataStr = JSON.stringify(allData, null, 2);
+  var blob = new Blob([dataStr], { type: 'application/json' });
+  var url = URL.createObjectURL(blob);
+  
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'haoran-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  
+  alert('✅ 数据已导出！\n文件保存为：' + a.download + '\n\n请通过微信/QQ/邮件发送到手机，然后在手机端导入。');
+}
+
+function showImportPanel() {
+  document.getElementById('syncStep1').style.display = 'none';
+  document.getElementById('syncStepImport').style.display = 'block';
+  document.getElementById('importStatus').textContent = '';
+}
+
+function importDataFile(input) {
+  var file = input.files[0];
+  if (!file) return;
+  
+  document.getElementById('importStatus').textContent = '正在读取文件...';
+  
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var data = JSON.parse(e.target.result);
+      
+      // 验证数据格式
+      if (!data.app || data.app !== 'haoran-workbench') {
+        document.getElementById('importStatus').textContent = '❌ 无效的数据文件';
+        return;
+      }
+      
+      // 保存数据
+      saveJSON('growth_tasks', data.tasks || []);
+      saveJSON('growth_habits', data.habits || {});
+      saveJSON('growth_journal', data.journal || []);
+      saveJSON('growth_goals', data.goals || []);
+      saveJSON('growth_fav', data.fav || []);
+      saveJSON('growth_finance', data.finance || { transactions: [] });
+      saveJSON('growth_schedule', data.schedule || { goals: [], monthly: [] });
+      
+      var summary = '任务:' + (data.tasks ? data.tasks.length : 0) + ' 日志:' + (data.journal ? data.journal.length : 0);
+      document.getElementById('importStatus').textContent = '✅ 导入成功！' + summary;
+      
+      setTimeout(function() {
+        alert('✅ 数据导入成功！\n' + summary + '\n\n页面即将刷新。');
+        location.reload();
+      }, 500);
+      
+    } catch(err) {
+      document.getElementById('importStatus').textContent = '❌ 解析失败: ' + err.message;
+    }
+  };
+  reader.readAsText(file);
 }
 
 // 数据编码：处理中文的 Base64（兼容二维码传输）
@@ -1586,7 +1847,10 @@ function generateQRCode() {
     timestamp: Date.now(),
     version: '1.0'
   };
-  console.log('Data loaded:', allData);
+  
+  // 显示数据摘要
+  var summary = '任务:' + allData.tasks.length + ' 日志:' + allData.journal.length + ' 目标:' + allData.goals.length;
+  console.log('Data summary:', summary);
   
   var compressed = compressData(allData);
   console.log('Compressed length:', compressed.length);
@@ -1600,7 +1864,7 @@ function generateQRCode() {
   
   document.getElementById('syncStep1').style.display = 'none';
   document.getElementById('syncStep2QR').style.display = 'block';
-  document.getElementById('syncStatusQR').textContent = '正在加载二维码库...';
+  document.getElementById('syncStatusQR').textContent = '生成中... (' + summary + ')';
   
   // 直接使用 Google Chart API，不依赖 CDN
   generateQRCodeFallback('GROWTH:' + compressed);
@@ -1676,8 +1940,12 @@ function scanFrame() {
       saveJSON('growth_finance', data.finance || { transactions: [] });
       saveJSON('growth_schedule', data.schedule || { goals: [], monthly: [] });
       
-      document.getElementById('scanStatus').textContent = '✅ 数据同步成功！页面即将刷新...';
-      setTimeout(function() { location.reload(); }, 1500);
+      // 验证保存是否成功
+      var verifyTasks = loadJSON('growth_tasks', []);
+      console.log('Verified tasks count:', verifyTasks.length);
+      
+      document.getElementById('scanStatus').textContent = '✅ 数据同步成功！任务:' + (data.tasks ? data.tasks.length : 0) + '条，即将刷新...';
+      setTimeout(function() { location.reload(); }, 2000);
     } else {
       document.getElementById('scanStatus').textContent = '❌ 数据解析失败，请重试';
     }
