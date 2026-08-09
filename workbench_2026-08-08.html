@@ -1,0 +1,2012 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>浩然 专属成长创作工作台</title>
+<link rel="manifest" href="manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="浩然工作台">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family:"PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif; background:#0f0f1a; color:#e8e8f0; min-height:100vh; }
+
+  .topbar { background:linear-gradient(135deg,#00b894 0%,#6c5ce7 50%,#fd79a8 100%); padding:16px 32px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:100; box-shadow:0 4px 20px rgba(108,92,231,0.35); }
+  .topbar-left { display:flex; align-items:center; gap:12px; }
+  .topbar-logo { font-size:24px; }
+  .topbar h1 { font-size:20px; font-weight:700; color:#fff; letter-spacing:1px; }
+  .topbar-date { color:rgba(255,255,255,0.85); font-size:14px; }
+  .topbar-right { display:flex; align-items:center; gap:16px; }
+  .status-badge { background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.3); border-radius:20px; padding:4px 14px; font-size:13px; color:#fff; backdrop-filter:blur(10px); }
+  .refresh-btn { background:rgba(255,255,255,0.2); border:1px solid rgba(255,255,255,0.3); color:#fff; border-radius:20px; padding:6px 18px; cursor:pointer; font-size:13px; font-family:inherit; transition:all 0.3s; }
+  .refresh-btn:hover { background:rgba(255,255,255,0.35); transform:translateY(-1px); }
+
+  .main-container { max-width:1440px; margin:0 auto; padding:24px; display:grid; grid-template-columns:320px 1fr; gap:20px; }
+  .sidebar { display:flex; flex-direction:column; gap:16px; }
+
+  .card { background:#1a1a2e; border-radius:16px; padding:20px; border:1px solid rgba(255,255,255,0.06); box-shadow:0 4px 24px rgba(0,0,0,0.3); transition:all 0.3s; }
+  .card:hover { border-color:rgba(108,92,231,0.3); box-shadow:0 4px 32px rgba(108,92,231,0.12); }
+  .card-header { display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+  .card-icon { font-size:20px; }
+  .card-title { font-size:15px; font-weight:600; color:#fff; }
+  .card-subtitle { font-size:11px; color:#888; margin-left:auto; }
+
+  .quote-card { background:linear-gradient(135deg,#16213e,#1a1a2e); border:1px solid rgba(108,92,231,0.25); border-radius:16px; padding:20px; cursor:pointer; transition:all 0.3s; }
+  .quote-card:hover { transform:translateY(-2px); border-color:rgba(108,92,231,0.5); }
+  .quote-text { font-size:15px; color:#dfe6ff; line-height:1.7; font-style:italic; }
+  .quote-hint { font-size:11px; color:#667; margin-top:10px; }
+
+  .stat-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+  .stat-card { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:10px; padding:12px 8px; text-align:center; }
+  .stat-num { font-size:20px; font-weight:700; color:#74b9ff; }
+  .stat-label { font-size:11px; color:#888; margin-top:2px; }
+
+  .habit-row { display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid rgba(255,255,255,0.05); }
+  .habit-row:last-child { border-bottom:none; }
+  .habit-icon { font-size:18px; width:26px; text-align:center; }
+  .habit-name { font-size:13.5px; color:#ccc; flex:1; }
+  .habit-streak { font-size:11px; color:#00b894; white-space:nowrap; }
+  .habit-btn { width:26px; height:26px; border-radius:50%; border:2px solid #444; background:transparent; cursor:pointer; color:transparent; font-size:12px; transition:all 0.3s; flex-shrink:0; }
+  .habit-btn.done { background:linear-gradient(135deg,#00b894,#55efc4); border-color:#00b894; color:#fff; }
+
+  .quick-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .quick-btn { background:rgba(108,92,231,0.1); border:1px solid rgba(108,92,231,0.2); border-radius:10px; padding:10px; cursor:pointer; text-align:center; transition:all 0.3s; }
+  .quick-btn:hover { background:rgba(108,92,231,0.25); transform:translateY(-2px); }
+  .quick-btn .e { font-size:18px; }
+  .quick-btn .l { font-size:11px; color:#aab; margin-top:3px; }
+
+  .sync-panel { background:linear-gradient(135deg,#1a1a2e,#16213e); border:1px solid rgba(0,206,201,0.3); border-radius:16px; padding:20px; margin-top:16px; }
+  .sync-title { font-size:15px; font-weight:600; color:#00cec9; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
+  .sync-row { display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
+  .sync-code { font-family:monospace; font-size:28px; letter-spacing:8px; color:#00cec9; background:rgba(0,206,201,0.1); padding:12px 24px; border-radius:10px; text-align:center; flex:1; }
+  .sync-input { background:rgba(255,255,255,0.05); border:1px solid rgba(0,206,201,0.3); border-radius:10px; padding:12px; color:#00cec9; font-family:monospace; font-size:20px; letter-spacing:6px; text-align:center; width:180px; }
+  .sync-status { font-size:12px; color:#888; margin-top:8px; }
+
+  .content-area { display:flex; flex-direction:column; gap:20px; }
+  .tabs { display:flex; gap:4px; background:#13132a; border-radius:12px; padding:4px; flex-wrap:wrap; }
+  .tab-btn { flex:1; min-width:90px; padding:8px 14px; border:none; background:transparent; color:#888; border-radius:8px; cursor:pointer; font-size:13px; font-family:inherit; transition:all 0.3s; text-align:center; }
+  .tab-btn.active { background:linear-gradient(135deg,#6c5ce7,#a29bfe); color:#fff; font-weight:600; }
+  .tab-btn:hover:not(.active) { color:#ccc; background:rgba(255,255,255,0.05); }
+  .tab-content { display:none; }
+  .tab-content.active { display:block; }
+
+  .add-form { display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
+  .add-input { flex:1; min-width:150px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:10px 14px; color:#ddd; font-family:inherit; font-size:13px; outline:none; }
+  .add-input:focus { border-color:rgba(108,92,231,0.5); }
+  .add-input::placeholder { color:#555; }
+  .add-select { background:#13132a; border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:10px; color:#ccc; font-family:inherit; font-size:13px; outline:none; }
+  .btn { padding:10px 20px; border:none; border-radius:10px; cursor:pointer; font-family:inherit; font-size:13px; font-weight:600; transition:all 0.3s; white-space:nowrap; }
+  .btn-primary { background:linear-gradient(135deg,#6c5ce7,#a29bfe); color:#fff; }
+  .btn-primary:hover { opacity:0.9; transform:translateY(-1px); box-shadow:0 4px 16px rgba(108,92,231,0.4); }
+  .btn-secondary { background:rgba(255,255,255,0.08); color:#aaa; border:1px solid rgba(255,255,255,0.1); }
+  .btn-secondary:hover { background:rgba(255,255,255,0.12); color:#fff; }
+  .btn-sm { padding:6px 12px; font-size:12px; }
+  .btn-row { display:flex; gap:8px; flex-wrap:wrap; }
+
+  .filter-row { display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap; }
+  .filter-chip { padding:5px 14px; border-radius:20px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); color:#999; cursor:pointer; font-size:12px; transition:all 0.2s; }
+  .filter-chip.active { background:linear-gradient(135deg,#6c5ce7,#a29bfe); color:#fff; border-color:transparent; }
+
+  .task-list { list-style:none; display:flex; flex-direction:column; gap:8px; }
+  .task-item { display:flex; align-items:center; gap:12px; padding:14px 16px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:12px; transition:all 0.2s; }
+  .task-item:hover { background:rgba(255,255,255,0.05); }
+  .task-check { width:20px; height:20px; border-radius:50%; border:2px solid #444; flex-shrink:0; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:11px; color:transparent; transition:all 0.3s; }
+  .task-check.done { background:linear-gradient(135deg,#00b894,#55efc4); border-color:#00b894; color:#fff; }
+  .task-body { flex:1; min-width:0; }
+  .task-text { font-size:14px; color:#e0e0e0; cursor:pointer; }
+  .task-text.done { text-decoration:line-through; color:#555; }
+  .task-meta { display:flex; gap:8px; margin-top:5px; align-items:center; }
+  .task-tag { font-size:10px; padding:2px 9px; border-radius:10px; }
+  .task-pri { font-size:10px; padding:2px 8px; border-radius:10px; font-weight:600; }
+  .pri-high { background:rgba(255,71,87,0.18); color:#ff6b6b; }
+  .pri-mid { background:rgba(255,165,2,0.18); color:#ffa502; }
+  .pri-low { background:rgba(136,136,136,0.18); color:#aaa; }
+  .tag-growth { background:rgba(0,206,201,0.18); color:#00cec9; }
+  .tag-health { background:rgba(0,184,148,0.18); color:#55efc4; }
+  .tag-study { background:rgba(116,185,255,0.18); color:#74b9ff; }
+  .tag-work { background:rgba(108,92,231,0.18); color:#a29bfe; }
+  .tag-relation { background:rgba(253,121,168,0.18); color:#fd79a8; }
+  .tag-review { background:rgba(255,159,67,0.18); color:#ffa043; }
+
+  .progress-wrap { margin:8px 0 18px; }
+  .progress-bar-bg { background:rgba(255,255,255,0.06); border-radius:10px; height:8px; overflow:hidden; }
+  .progress-bar-fill { height:100%; background:linear-gradient(90deg,#6c5ce7,#00b894); border-radius:10px; transition:width 0.4s; }
+  .progress-text { font-size:12px; color:#888; margin-top:6px; }
+
+  .week-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:8px; margin-top:8px; }
+  .week-day { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:10px; padding:12px 4px; text-align:center; cursor:pointer; transition:all 0.2s; }
+  .week-day:hover { background:rgba(108,92,231,0.1); }
+  .week-day.today { border-color:#6c5ce7; background:rgba(108,92,231,0.15); }
+  .week-name { font-size:12px; color:#aaa; }
+  .week-num { font-size:11px; color:#667; margin-top:4px; }
+  .week-focus { font-size:10px; color:#a29bfe; margin-top:6px; min-height:12px; }
+
+  .mood-row { display:flex; gap:8px; flex-wrap:wrap; }
+  .mood-item { font-size:24px; padding:8px 12px; border-radius:10px; background:rgba(255,255,255,0.04); border:1px solid transparent; cursor:pointer; transition:all 0.2s; }
+  .mood-item.active { background:rgba(108,92,231,0.15); border-color:#6c5ce7; transform:scale(1.1); }
+  .form-group { display:flex; flex-direction:column; gap:6px; }
+  .form-group label { font-size:13px; color:#aaa; font-weight:500; }
+  .form-group textarea { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:10px; padding:12px; color:#ddd; font-family:inherit; font-size:13.5px; resize:vertical; min-height:70px; outline:none; }
+  .form-group textarea:focus { border-color:rgba(108,92,231,0.5); }
+  .form-group textarea::placeholder { color:#555; }
+
+  .timeline { display:flex; flex-direction:column; gap:0; margin-top:8px; }
+  .tl-item { display:flex; gap:14px; padding-bottom:18px; position:relative; }
+  .tl-item:not(:last-child)::before { content:''; position:absolute; left:11px; top:26px; bottom:0; width:2px; background:rgba(255,255,255,0.08); }
+  .tl-dot { width:24px; height:24px; border-radius:50%; background:linear-gradient(135deg,#6c5ce7,#a29bfe); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:12px; z-index:1; }
+  .tl-content { flex:1; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:14px; }
+  .tl-date { font-size:12px; color:#a29bfe; margin-bottom:8px; }
+  .tl-row { font-size:13px; color:#ccc; margin-bottom:5px; line-height:1.6; }
+  .tl-label { color:#888; font-size:11px; margin-right:6px; }
+
+  .cog-hero { background:linear-gradient(135deg,#16213e,#1a1a2e); border:1px solid rgba(108,92,231,0.25); border-radius:16px; padding:28px; cursor:pointer; transition:all 0.3s; position:relative; overflow:hidden; }
+  .cog-hero:hover { transform:translateY(-3px); border-color:rgba(108,92,231,0.5); box-shadow:0 8px 32px rgba(108,92,231,0.15); }
+  .cog-hero::after { content:'🔍 点击查看详解'; position:absolute; bottom:14px; right:18px; font-size:12px; color:#667; }
+  .cog-cat { display:inline-block; font-size:11px; padding:3px 12px; border-radius:20px; background:rgba(162,155,254,0.15); color:#a29bfe; margin-bottom:14px; }
+  .cog-title { font-size:24px; font-weight:700; color:#fff; margin-bottom:10px; }
+  .cog-quote { font-size:15px; color:#bbb; line-height:1.7; font-style:italic; }
+  .cog-hint { font-size:12px; color:#667; margin-top:16px; }
+  .cog-list { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; margin-top:16px; }
+  .cog-card { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:16px; cursor:pointer; transition:all 0.3s; }
+  .cog-card:hover { background:rgba(108,92,231,0.08); border-color:rgba(108,92,231,0.3); transform:translateY(-2px); }
+  .cog-card .cc-cat { font-size:10px; color:#a29bfe; margin-bottom:8px; }
+  .cog-card .cc-title { font-size:14px; font-weight:600; color:#e0e0e0; margin-bottom:6px; }
+  .cog-card .cc-desc { font-size:12px; color:#777; line-height:1.5; }
+  .cog-card.fav { border-color:rgba(255,200,0,0.4); }
+  .cog-card .cc-star { float:right; font-size:13px; }
+
+  .goal-card { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:14px; padding:18px; margin-bottom:14px; }
+  .goal-head { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+  .goal-title { font-size:15px; font-weight:600; color:#fff; flex:1; }
+  .goal-pct { font-size:18px; font-weight:700; color:#00b894; }
+  .goal-steps { list-style:none; margin-top:10px; }
+  .goal-step { display:flex; align-items:center; gap:10px; padding:7px 0; font-size:13px; color:#bbb; }
+  .goal-step .gs-check { width:16px; height:16px; border-radius:4px; border:2px solid #444; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:10px; color:transparent; transition:all 0.3s; flex-shrink:0; }
+  .goal-step .gs-check.done { background:#00b894; border-color:#00b894; color:#fff; }
+  .goal-step.done span { text-decoration:line-through; color:#555; }
+  .goal-del { background:transparent; border:none; color:#555; cursor:pointer; font-size:15px; }
+  .goal-del:hover { color:#ff6b6b; }
+
+  .habit-stat { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:16px; margin-bottom:12px; }
+  .habit-stat-head { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+  .habit-stat-name { font-size:14px; color:#e0e0e0; font-weight:600; flex:1; }
+  .habit-stat-streak { font-size:13px; color:#00b894; font-weight:600; }
+  .week-dots { display:flex; gap:6px; }
+  .day-dot { flex:1; height:30px; border-radius:6px; background:rgba(255,255,255,0.04); display:flex; align-items:center; justify-content:center; font-size:10px; color:#556; }
+  .day-dot.done { background:linear-gradient(135deg,#00b894,#55efc4); color:#0a3; font-weight:600; }
+
+  /* 娱乐创作模块 */
+  .hot-topics { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; }
+  .hot-item { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:14px 16px; display:flex; align-items:center; gap:12px; cursor:pointer; transition:all 0.3s; }
+  .hot-item:hover { background:rgba(253,121,168,0.08); border-color:rgba(253,121,168,0.2); transform:translateX(3px); }
+  .hot-rank { font-size:16px; font-weight:700; color:#555; min-width:24px; text-align:center; }
+  .hot-rank.top1 { color:#ff4757; }
+  .hot-rank.top2 { color:#ff6348; }
+  .hot-rank.top3 { color:#ffa502; }
+  .hot-info { flex:1; min-width:0; }
+  .hot-title { font-size:13.5px; color:#e0e0e0; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .hot-desc { font-size:11px; color:#666; margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .hot-heat { font-size:11px; color:#888; white-space:nowrap; }
+
+  .live-inspiration { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:12px; }
+  .live-card { background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:16px; transition:all 0.3s; cursor:pointer; }
+  .live-card:hover { background:rgba(0,206,201,0.05); border-color:rgba(0,206,201,0.25); transform:translateY(-3px); }
+  .live-emoji { font-size:28px; margin-bottom:8px; }
+  .live-title { font-size:13.5px; font-weight:600; color:#e0e0e0; margin-bottom:6px; }
+  .live-desc { font-size:12px; color:#777; line-height:1.6; }
+
+  .news-feed { display:flex; flex-direction:column; gap:10px; }
+  .news-item { display:flex; align-items:flex-start; gap:12px; padding:12px; background:rgba(255,255,255,0.02); border-radius:10px; border:1px solid rgba(255,255,255,0.04); cursor:pointer; transition:all 0.3s; }
+  .news-item:hover { background:rgba(108,92,231,0.06); border-color:rgba(108,92,231,0.2); }
+  .news-badge { padding:2px 8px; border-radius:6px; font-size:10px; font-weight:600; flex-shrink:0; }
+  .badge-internal { background:rgba(253,121,168,0.15); color:#fd79a8; }
+  .badge-global { background:rgba(108,92,231,0.15); color:#a29bfe; }
+  .badge-tech { background:rgba(0,206,201,0.15); color:#00cec9; }
+  .badge-economy { background:rgba(255,159,67,0.15); color:#ffa043; }
+  .news-content { flex:1; }
+  .news-title { font-size:13px; color:#ddd; line-height:1.5; margin-bottom:4px; }
+  .news-meta { font-size:11px; color:#555; }
+
+  .creative-prompt { background:rgba(108,92,231,0.08); border:1px solid rgba(108,92,231,0.2); border-radius:12px; padding:16px; margin-top:16px; }
+  .creative-prompt h4 { font-size:13px; color:#a29bfe; margin-bottom:10px; }
+  .prompt-tags { display:flex; flex-wrap:wrap; gap:6px; }
+  .prompt-tag { background:rgba(108,92,231,0.15); border:1px solid rgba(108,92,231,0.25); color:#a29bfe; padding:4px 12px; border-radius:20px; font-size:12px; cursor:pointer; transition:all 0.2s; }
+  .prompt-tag:hover { background:rgba(108,92,231,0.3); transform:translateY(-1px); }
+
+  .review-section { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .review-block { background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.06); border-radius:12px; padding:16px; }
+  .review-block h4 { font-size:13px; color:#888; margin-bottom:10px; font-weight:500; }
+  .review-history { margin-top:16px; display:flex; flex-direction:column; gap:8px; max-height:280px; overflow-y:auto; }
+  .review-history::-webkit-scrollbar { width:4px; }
+  .review-history::-webkit-scrollbar-thumb { background:#333; border-radius:2px; }
+  .history-item { background:rgba(255,255,255,0.03); border-radius:8px; padding:10px 12px; font-size:12.5px; color:#888; border-left:2px solid #6c5ce7; line-height:1.5; }
+  .history-date { font-size:10px; color:#555; margin-bottom:3px; }
+
+  .empty-state { text-align:center; padding:30px 20px; color:#555; font-size:13px; }
+  @media (max-width:900px) { .main-container { grid-template-columns:1fr; } .review-section { grid-template-columns:1fr; } }
+  ::-webkit-scrollbar { width:5px; height:5px; }
+  ::-webkit-scrollbar-track { background:transparent; }
+  ::-webkit-scrollbar-thumb { background:#333; border-radius:3px; }
+
+  .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.7); backdrop-filter:blur(4px); display:flex; align-items:center; justify-content:center; z-index:1000; opacity:0; pointer-events:none; transition:opacity 0.25s; padding:20px; }
+  .modal-overlay.show { opacity:1; pointer-events:auto; }
+  .modal { position:relative; background:#1a1a2e; border:1px solid rgba(108,92,231,0.3); border-radius:16px; max-width:540px; width:100%; max-height:82vh; overflow-y:auto; padding:24px; transform:translateY(20px); transition:transform 0.25s; box-shadow:0 20px 60px rgba(0,0,0,0.6); }
+  .modal-overlay.show .modal { transform:translateY(0); }
+  .modal-close { position:absolute; top:14px; right:18px; font-size:26px; color:#888; cursor:pointer; line-height:1; }
+  .modal-close:hover { color:#fff; }
+  .modal-title { font-size:19px; font-weight:700; color:#fff; margin-bottom:10px; padding-right:30px; }
+  .modal-tags { display:flex; gap:6px; margin-bottom:16px; flex-wrap:wrap; }
+  .modal-tag { background:rgba(108,92,231,0.15); color:#a29bfe; padding:3px 10px; border-radius:6px; font-size:11px; font-weight:500; }
+  .modal-detail { font-size:13.5px; color:#bbb; line-height:1.85; margin-bottom:18px; }
+  .modal-label { font-size:13px; color:#888; margin-bottom:10px; font-weight:500; }
+  .modal-angles { list-style:none; margin-bottom:22px; }
+  .modal-angles li { font-size:13px; color:#ccc; padding:9px 12px; background:rgba(108,92,231,0.08); border-radius:8px; margin-bottom:8px; border-left:2px solid #a29bfe; line-height:1.6; }
+  .modal-actions { display:flex; gap:10px; }
+  .modal-btn { flex:1; padding:12px; border-radius:10px; border:none; cursor:pointer; font-size:13px; font-weight:600; font-family:inherit; transition:all 0.3s; text-align:center; text-decoration:none; display:block; }
+  .modal-btn.douyin { background:linear-gradient(135deg,#fe2c55,#ff6b8a); color:#fff; }
+  .modal-btn.baidu { background:linear-gradient(135deg,#4e6ef2,#6a8aff); color:#fff; }
+  .modal-btn.fav { background:rgba(255,200,0,0.15); color:#ffd000; border:1px solid rgba(255,200,0,0.3); }
+  .modal-btn.fav.done { background:linear-gradient(135deg,#ffb300,#ffd000); color:#3a2e00; border:none; }
+  .modal-btn:hover { opacity:0.9; transform:translateY(-1px); }
+
+  /* 记账本 */
+  .fin-type-toggle { display:flex; gap:6px; }
+  .fin-type-btn { padding:8px 16px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); color:#aaa; cursor:pointer; font-size:13px; font-family:inherit; transition:all 0.2s; }
+  .fin-type-btn.active-exp { background:rgba(253,121,168,0.18); color:#fd79a8; border-color:rgba(253,121,168,0.4); }
+  .fin-type-btn.active-inc { background:rgba(0,184,148,0.18); color:#55efc4; border-color:rgba(0,184,148,0.4); }
+  .fin-cat-row { display:flex; flex-direction:column; gap:10px; margin-top:4px; }
+  .fin-cat-item { display:flex; align-items:center; gap:10px; }
+  .fin-cat-name { font-size:13px; color:#ccc; width:78px; flex-shrink:0; }
+  .fin-cat-bar-bg { flex:1; height:8px; background:rgba(255,255,255,0.06); border-radius:6px; overflow:hidden; }
+  .fin-cat-bar { height:100%; background:linear-gradient(90deg,#fd79a8,#ffa043); border-radius:6px; transition:width 0.4s; }
+  .fin-cat-amount { font-size:12px; color:#999; width:90px; text-align:right; flex-shrink:0; }
+  .fin-list { display:flex; flex-direction:column; gap:8px; }
+  .fin-item { display:flex; align-items:center; gap:12px; padding:12px 14px; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:12px; }
+  .fin-emoji { font-size:20px; width:30px; text-align:center; flex-shrink:0; }
+  .fin-info { flex:1; min-width:0; }
+  .fin-note { font-size:13.5px; color:#e0e0e0; }
+  .fin-sub { font-size:11px; color:#666; margin-top:2px; }
+  .fin-amount { font-size:15px; font-weight:700; font-family:inherit; white-space:nowrap; }
+  .fin-amount.exp { color:#fd79a8; }
+  .fin-amount.inc { color:#00b894; }
+  .fin-del { background:transparent; border:none; color:#555; cursor:pointer; font-size:15px; padding:4px 8px; border-radius:6px; }
+  .fin-del:hover { color:#ff6b6b; background:rgba(255,107,107,0.1); }
+  .stock-card { cursor:pointer; transition:background 0.2s; }
+  .stock-card:hover { background:rgba(108,92,231,0.12); }
+  .stock-name { font-size:11px; color:#aab; }
+  .stock-value { font-size:16px; font-weight:700; color:#fff; margin:4px 0 2px; }
+  .stock-change.up { color:#ff4757; }
+  .stock-change.down { color:#00b894; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-left">
+    <span class="topbar-logo">🌟</span>
+    <div>
+      <h1>浩然 专属成长创作工作台</h1>
+      <div class="topbar-date" id="currentDate"></div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <div class="status-badge" id="statusBadge">✨ 今天也要成长</div>
+    <button class="refresh-btn" onclick="refreshAll()">🔄 刷新</button>
+  </div>
+</div>
+
+<div class="main-container">
+
+  <!-- ============ 左侧栏 ============ -->
+  <div class="sidebar">
+    <div class="quote-card" onclick="nextQuote()">
+      <div class="quote-text" id="dailyQuote"></div>
+      <div class="quote-hint">↻ 点击换一句</div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-icon">📊</span><span class="card-title">今日概览</span></div>
+      <div class="stat-grid">
+        <div class="stat-card"><div class="stat-num" id="statTask">0</div><div class="stat-label">任务完成</div></div>
+        <div class="stat-card"><div class="stat-num" id="statHabit">0</div><div class="stat-label">习惯打卡</div></div>
+        <div class="stat-card"><div class="stat-num" id="statJournal">0</div><div class="stat-label">成长日志</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-icon">✅</span><span class="card-title">微习惯打卡</span><span class="card-subtitle">点圆点</span></div>
+      <div id="habitList"></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-icon">⚡</span><span class="card-title">快捷入口</span></div>
+      <div class="quick-row">
+        <div class="quick-btn" onclick="switchTab('plan')"><div class="e">📋</div><div class="l">计划任务</div></div>
+        <div class="quick-btn" onclick="switchTab('journal')"><div class="e">📝</div><div class="l">成长日志</div></div>
+        <div class="quick-btn" onclick="switchTab('cognition')"><div class="e">🧠</div><div class="l">每日认知</div></div>
+        <div class="quick-btn" onclick="switchTab('goals')"><div class="e">🎯</div><div class="l">目标习惯</div></div>
+        <div class="quick-btn" onclick="switchTab('douyin')"><div class="e">🎵</div><div class="l">创作灵感</div></div>
+        <div class="quick-btn" onclick="switchTab('review')"><div class="e">📊</div><div class="l">内容复盘</div></div>
+      </div>
+      <div style="margin-top:12px;">
+        <div class="quick-btn" onclick="toggleSyncPanel()" style="background:linear-gradient(135deg,rgba(0,206,201,0.2),rgba(0,206,201,0.05)); border-color:rgba(0,206,201,0.4);">
+          <div class="e">🔄</div><div class="l" style="color:#00cec9;">设备同步</div>
+        </div>
+      </div>
+      <div id="syncPanel" class="sync-panel" style="display:none;">
+        <div class="sync-title">🔄 跨设备同步</div>
+        <div id="syncStep1">
+          <div style="font-size:13px;color:#aaa;margin-bottom:10px;">☁️ 云端同步（推荐）：</div>
+          <div class="sync-row">
+            <button class="btn btn-primary" onclick="uploadToGist()">📤 上传到云端</button>
+            <button class="btn btn-secondary" onclick="downloadFromGist()">📥 从云端下载</button>
+          </div>
+          <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.1);">
+            <div style="font-size:12px;color:#888;margin-bottom:8px;">💾 本地备份：</div>
+            <div class="sync-row">
+              <button class="btn btn-secondary btn-sm" onclick="exportDataFile()">📤 导出文件</button>
+              <button class="btn btn-secondary btn-sm" onclick="showImportPanel()">📥 导入文件</button>
+            </div>
+          </div>
+          <div style="margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.1);">
+            <div style="font-size:12px;color:#888;margin-bottom:8px;">📷 二维码（数据量小可用）：</div>
+            <div class="sync-row">
+              <button class="btn btn-secondary btn-sm" onclick="generateQRCode()">生成二维码</button>
+              <button class="btn btn-secondary btn-sm" onclick="startScan()">扫码接收</button>
+            </div>
+          </div>
+        </div>
+        <div id="syncStepGist" style="display:none;">
+          <div style="font-size:13px;color:#aaa;margin-bottom:10px;">☁️ 云端同步</div>
+          <div id="gistTokenInput" style="margin-bottom:10px;">
+            <input type="password" id="githubToken" placeholder="输入 GitHub Token" style="width:100%;padding:8px;border-radius:6px;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.3);color:#fff;font-size:13px;">
+            <div style="font-size:11px;color:#888;margin-top:4px;">Token 只保存在本地浏览器</div>
+          </div>
+          <div id="gistStatus" class="sync-status" style="margin-bottom:10px;"></div>
+          <div class="sync-row">
+            <button class="btn btn-primary btn-sm" onclick="uploadToGist()">📤 上传</button>
+            <button class="btn btn-secondary btn-sm" onclick="downloadFromGist()">📥 下载</button>
+            <button class="btn btn-secondary btn-sm" onclick="cancelSync()">返回</button>
+          </div>
+        </div>
+        <div id="syncStep2QR" style="display:none;">
+          <div style="font-size:13px;color:#aaa;margin-bottom:10px;">用手机扫描下方二维码</div>
+          <div id="qrcodeContainer" style="background:#fff;padding:16px;border-radius:10px;display:inline-block;"></div>
+          <div class="sync-status" id="syncStatusQR">请尽快扫码</div>
+          <button class="btn btn-secondary btn-sm" onclick="cancelSync()" style="margin-top:10px;">完成</button>
+        </div>
+        <div id="syncStep2Scan" style="display:none;">
+          <div style="font-size:13px;color:#aaa;margin-bottom:10px;">对准电脑屏幕上的二维码</div>
+          <div id="scannerContainer" style="width:280px;height:210px;background:#000;border-radius:10px;overflow:hidden;position:relative;">
+            <video id="scanVideo" style="width:100%;height:100%;object-fit:cover;" autoplay playsinline></video>
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:180px;height:180px;border:2px solid #00cec9;border-radius:8px;pointer-events:none;"></div>
+          </div>
+          <div class="sync-status" id="scanStatus">正在启动相机...</div>
+          <button class="btn btn-secondary btn-sm" onclick="cancelSync()" style="margin-top:10px;">取消</button>
+        </div>
+        <div id="syncStepImport" style="display:none;">
+          <div style="font-size:13px;color:#aaa;margin-bottom:10px;">选择之前导出的 .json 文件</div>
+          <input type="file" id="importFileInput" accept=".json" style="display:none;" onchange="importDataFile(this)">
+          <button class="btn btn-primary" onclick="document.getElementById('importFileInput').click()">📁 选择文件</button>
+          <div class="sync-status" id="importStatus" style="margin-top:10px;"></div>
+          <button class="btn btn-secondary btn-sm" onclick="cancelSync()" style="margin-top:10px;">取消</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ 右侧主内容 ============ -->
+  <div class="content-area">
+    <div class="tabs" id="mainTabs">
+      <button class="tab-btn active" onclick="switchTab('plan')">📋 计划任务</button>
+      <button class="tab-btn" onclick="switchTab('journal')">📝 成长日志</button>
+      <button class="tab-btn" onclick="switchTab('cognition')">🧠 每日认知</button>
+      <button class="tab-btn" onclick="switchTab('goals')">🎯 目标习惯</button>
+      <button class="tab-btn" onclick="switchTab('douyin')">🎵 创作灵感</button>
+      <button class="tab-btn" onclick="switchTab('news')">🌍 时事政治</button>
+      <button class="tab-btn" onclick="switchTab('review')">📊 内容复盘</button>
+      <button class="tab-btn" onclick="switchTab('finance')">💰 记账本</button>
+      <button class="tab-btn" onclick="switchTab('stock')">📈 股市</button>
+      <button class="tab-btn" onclick="switchTab('schedule')">🗓️ 计划</button>
+      <button class="tab-btn" onclick="switchTab('weather')">🌤️ 天气</button>
+    </div>
+
+    <!-- Tab1 计划任务 -->
+    <div class="tab-content active" id="tab-plan">
+      <div class="card">
+        <div class="card-header"><span class="card-icon">➕</span><span class="card-title">制定新任务</span></div>
+        <div class="add-form">
+          <input class="add-input" id="taskInput" placeholder="今天要完成什么？例如：读完《认知觉醒》第3章">
+          <select class="add-select" id="taskCat">
+            <option value="growth">成长</option><option value="health">健康</option>
+            <option value="study">学习</option><option value="work">工作</option>
+            <option value="relation">人际</option><option value="review">复盘</option>
+          </select>
+          <select class="add-select" id="taskPri">
+            <option value="high">高优先</option><option value="mid">中优先</option><option value="low">低优先</option>
+          </select>
+          <button class="btn btn-primary" onclick="addTask()">添加</button>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-bar-bg"><div class="progress-bar-fill" id="taskProgress" style="width:0%"></div></div>
+          <div class="progress-text" id="taskProgressText">完成 0 / 0</div>
+        </div>
+        <div class="filter-row" id="taskFilter">
+          <span class="filter-chip active" data-cat="all" onclick="filterTasks('all')">全部</span>
+          <span class="filter-chip" data-cat="growth" onclick="filterTasks('growth')">成长</span>
+          <span class="filter-chip" data-cat="health" onclick="filterTasks('health')">健康</span>
+          <span class="filter-chip" data-cat="study" onclick="filterTasks('study')">学习</span>
+          <span class="filter-chip" data-cat="work" onclick="filterTasks('work')">工作</span>
+          <span class="filter-chip" data-cat="relation" onclick="filterTasks('relation')">人际</span>
+          <span class="filter-chip" data-cat="review" onclick="filterTasks('review')">复盘</span>
+        </div>
+        <ul class="task-list" id="taskList"></ul>
+      </div>
+      <div class="card" style="margin-top:16px;">
+        <div class="card-header"><span class="card-icon">🗓️</span><span class="card-title">本周计划</span><span class="card-subtitle">点击设定每日焦点</span></div>
+        <div class="week-grid" id="weekGrid"></div>
+      </div>
+    </div>
+
+    <!-- Tab2 成长日志 -->
+    <div class="tab-content" id="tab-journal">
+      <div class="card">
+        <div class="card-header"><span class="card-icon">✍️</span><span class="card-title">写今日成长记录</span><span class="card-subtitle" id="journalDate"></span></div>
+        <div class="journal-form">
+          <div>
+            <label style="font-size:13px;color:#aaa;">今天心情</label>
+            <div class="mood-row" id="moodRow" style="margin-top:8px;">
+              <span class="mood-item" data-mood="😄 很好" onclick="pickMood(this)">😄</span>
+              <span class="mood-item" data-mood="🙂 不错" onclick="pickMood(this)">🙂</span>
+              <span class="mood-item" data-mood="😐 一般" onclick="pickMood(this)">😐</span>
+              <span class="mood-item" data-mood="😟 低落" onclick="pickMood(this)">😟</span>
+              <span class="mood-item" data-mood="😤 焦虑" onclick="pickMood(this)">😤</span>
+            </div>
+          </div>
+          <div class="form-group"><label>💡 今日收获 / 新认知</label><textarea id="jGains" placeholder="今天学到了什么？有什么新的感悟或突破？"></textarea></div>
+          <div class="form-group"><label>🙏 今日感恩</label><textarea id="jGratitude" placeholder="今天有什么值得感恩的人或事？"></textarea></div>
+          <div class="form-group"><label>🔍 今日反思</label><textarea id="jReflect" placeholder="今天哪里可以做得更好？下次怎么改进？"></textarea></div>
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="saveJournal()">💾 保存今日记录</button>
+            <button class="btn btn-secondary" onclick="exportJournals()">📥 导出日志</button>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px;">
+        <div class="card-header"><span class="card-icon">📜</span><span class="card-title">成长时间线</span></div>
+        <div class="timeline" id="journalTimeline"></div>
+      </div>
+    </div>
+
+    <!-- Tab3 每日认知 -->
+    <div class="tab-content" id="tab-cognition">
+      <div class="card">
+        <div class="card-header"><span class="card-icon">🧠</span><span class="card-title">今日认知提升</span><span class="card-subtitle" id="cogDate"></span></div>
+        <div class="cog-hero" id="cogHero" onclick="openDetail('cognition', currentCogIndex)">
+          <span class="cog-cat" id="cogHeroCat"></span>
+          <div class="cog-title" id="cogHeroTitle"></div>
+          <div class="cog-quote" id="cogHeroQuote"></div>
+          <div class="cog-hint">每日一条思维模型 / 心理学 / 习惯科学，升级你的认知系统</div>
+        </div>
+        <div class="card-header" style="margin:20px 0 0 0;"><span class="card-icon">📚</span><span class="card-title">认知库（点击查看详解 · ⭐可收藏）</span></div>
+        <div class="cog-list" id="cogList"></div>
+      </div>
+    </div>
+
+    <!-- Tab4 目标习惯 -->
+    <div class="tab-content" id="tab-goals">
+      <div class="card">
+        <div class="card-header"><span class="card-icon">🎯</span><span class="card-title">长期目标</span><span class="card-subtitle">拆解 + 追踪进度</span></div>
+        <div class="add-form">
+          <input class="add-input" id="goalInput" placeholder="设定一个目标，例如：3个月读完12本书">
+          <button class="btn btn-primary" onclick="addGoal()">添加目标</button>
+        </div>
+        <div id="goalList"></div>
+      </div>
+      <div class="card" style="margin-top:16px;">
+        <div class="card-header"><span class="card-icon">📈</span><span class="card-title">习惯打卡统计</span><span class="card-subtitle">近7天</span></div>
+        <div id="habitStats"></div>
+        <div class="btn-row" style="margin-top:8px;"><button class="btn btn-secondary btn-sm" onclick="addHabit()">➕ 新增习惯</button></div>
+      </div>
+    </div>
+
+    <!-- Tab5 创作灵感（抖音热点 + 直播灵感） -->
+    <div class="tab-content" id="tab-douyin">
+      <div class="card">
+        <div class="card-header"><span class="card-icon">🔥</span><span class="card-title">抖音实时热搜</span><span class="card-subtitle">数据来源：公开搜索 | 2026-08-08</span></div>
+        <div class="tabs" style="margin:0 0 16px 0;">
+          <button class="tab-btn active" onclick="filterHot('all')">全部</button>
+          <button class="tab-btn" onclick="filterHot('entertainment')">🎭 娱乐</button>
+          <button class="tab-btn" onclick="filterHot('social')">📱 社会</button>
+          <button class="tab-btn" onclick="filterHot('tech')">💻 科技</button>
+          <button class="tab-btn" onclick="filterHot('life')">🌿 生活</button>
+        </div>
+        <div class="hot-topics" id="hotTopics"></div>
+        <div style="margin-top:24px;">
+          <div class="card-header" style="margin-bottom:14px;">
+            <span class="card-icon">📺</span><span class="card-title" style="color:#00cec9;">娱乐直播热门灵感</span>
+          </div>
+          <div class="live-inspiration" id="liveInspiration"></div>
+        </div>
+        <div class="creative-prompt">
+          <h4>🎯 基于热点的直播/短视频创意 Prompt</h4>
+          <div class="prompt-tags" id="promptTags">
+            <span class="prompt-tag" onclick="copyPrompt(this)">🎤 歌手2026歌王之战热点蹭流量脚本</span>
+            <span class="prompt-tag" onclick="copyPrompt(this)">🔥 台风天居家直播互动话题设计</span>
+            <span class="prompt-tag" onclick="copyPrompt(this)">💄 AI主播政策解读直播</span>
+            <span class="prompt-tag" onclick="copyPrompt(this)">🍗 牛蛙抗生素超标食品安全话题</span>
+            <span class="prompt-tag" onclick="copyPrompt(this)">🎬 敖子逸仙侠新剧预热互动直播</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab6 时事政治 -->
+    <div class="tab-content" id="tab-news">
+      <div class="card">
+        <div class="card-header"><span class="card-icon">🌍</span><span class="card-title">时事政治 & 热点事件</span><span class="card-subtitle">2026年8月 · 今日更新</span></div>
+        <div class="news-feed" id="newsFeed"></div>
+      </div>
+    </div>
+
+    <!-- Tab7 内容复盘 -->
+    <div class="tab-content" id="tab-review">
+      <div class="card">
+        <div class="card-header"><span class="card-icon">📊</span><span class="card-title">内容复盘工具</span><span class="card-subtitle">记录每次直播/视频表现，持续优化</span></div>
+        <div class="review-section">
+          <div class="review-block">
+            <h4>✅ 本次表现好的地方</h4>
+            <div class="review-form">
+              <div class="form-group"><label>标题/开场钩子效果</label><textarea id="reviewGood1" placeholder="例如：开场5秒留人率高..."></textarea></div>
+              <div class="form-group"><label>互动数据亮点</label><textarea id="reviewGood2" placeholder="例如：评论区111刷屏带动推荐..."></textarea></div>
+              <div class="form-group"><label>其他亮点</label><textarea id="reviewGood3" placeholder="可补充其他做得好的地方..."></textarea></div>
+            </div>
+          </div>
+          <div class="review-block">
+            <h4>❌ 需要优化的地方</h4>
+            <div class="review-form">
+              <div class="form-group"><label>内容层面</label><textarea id="reviewBad1" placeholder="例如：节奏太平，高潮来得太慢..."></textarea></div>
+              <div class="form-group"><label>技术/表达层面</label><textarea id="reviewBad2" placeholder="例如：光线太暗，语速过快..."></textarea></div>
+              <div class="form-group"><label>下次改进计划</label><textarea id="reviewPlan" placeholder="例如：下次开头加反差钩子..."></textarea></div>
+            </div>
+          </div>
+        </div>
+        <div class="btn-row" style="margin-top:16px;">
+          <button class="btn btn-primary" onclick="saveReview()">💾 保存复盘</button>
+          <button class="btn btn-secondary" onclick="exportReview()">📥 导出记录</button>
+          <button class="btn btn-secondary" onclick="clearReview()">🗑️ 清空</button>
+        </div>
+        <div style="margin-top:20px;">
+          <div class="card-header"><span class="card-icon">📜</span><span class="card-title">复盘历史</span></div>
+          <div class="review-history" id="reviewHistory"><div class="empty-state" id="emptyHistory">暂无复盘记录，开始记录你的第一次复盘吧 ✨</div></div>
+        </div>
+        <div style="margin-top:20px;">
+          <h4 style="font-size:13px; color:#888; margin-bottom:12px;">🧠 AI优化建议</h4>
+          <div style="background:rgba(255,159,67,0.05); border:1px solid rgba(255,159,67,0.15); border-radius:10px; padding:14px; font-size:13px; color:#bbb; line-height:1.8;" id="aiSuggestion"></div>
+          <button class="btn btn-secondary" style="margin-top:10px;" onclick="getAISuggestion()">🔄 换一批建议</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab8 记账本 -->
+    <div class="tab-content" id="tab-finance">
+      <div class="card">
+        <div class="card-header"><span class="card-icon">💰</span><span class="card-title">本月概览</span><span class="card-subtitle" id="finMonth"></span></div>
+        <div class="stat-grid">
+          <div class="stat-card"><div class="stat-num" id="finIncome" style="color:#00b894;">¥0</div><div class="stat-label">本月收入</div></div>
+          <div class="stat-card"><div class="stat-num" id="finExpense" style="color:#fd79a8;">¥0</div><div class="stat-label">本月支出</div></div>
+          <div class="stat-card"><div class="stat-num" id="finBalance" style="color:#a29bfe;">¥0</div><div class="stat-label">本月结余</div></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="card-header"><span class="card-icon">➕</span><span class="card-title">记一笔</span></div>
+        <div class="add-form">
+          <select class="add-select" id="finType" onchange="renderFinanceCategories()">
+            <option value="expense">支出</option>
+            <option value="income">收入</option>
+          </select>
+          <input class="add-input" id="finAmount" type="number" placeholder="金额（元）" style="max-width:130px;">
+          <select class="add-select" id="finCategory"></select>
+          <input class="add-input" id="finNote" placeholder="备注（选填）">
+          <input class="add-input" id="finDate" type="date" style="max-width:150px;">
+          <button class="btn btn-primary" onclick="addTransaction()">记一笔</button>
+        </div>
+        <div class="btn-row" style="margin-top:8px;">
+          <button class="btn btn-secondary btn-sm" onclick="exportFinance()">📥 导出账单</button>
+          <button class="btn btn-secondary btn-sm" onclick="clearFinance()">🗑️ 清空</button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="card-header"><span class="card-icon">📊</span><span class="card-title">本月支出分类占比</span></div>
+        <div id="finCategoryStats"></div>
+      </div>
+
+      <div class="card" style="margin-top:16px;">
+        <div class="card-header"><span class="card-icon">📜</span><span class="card-title">交易记录</span><span class="card-subtitle" id="finCount"></span></div>
+        <div id="finList"></div>
+      </div>
+    </div>
+
+    <!-- Tab9 股市 -->
+    <div class="tab-content" id="tab-stock">
+      <div class="card">
+        <div class="card-header"><span class="card-icon">📈</span><span class="card-title">指数速览</span><span class="card-subtitle">点击卡片可手动更新</span></div>
+        <div class="stat-grid" id="stockIndices" style="grid-template-columns:repeat(5,1fr);"></div>
+      </div>
+      <div class="card" style="margin-top:16px;">
+        <div class="card-header"><span class="card-icon">💼</span><span class="card-title">持仓管理</span><span class="card-subtitle" id="stockSummary"></span></div>
+        <div class="add-form">
+          <input class="add-input" id="stockName" placeholder="名称/代码，如：贵州茅台 600519">
+          <input class="add-input" id="stockCost" type="number" placeholder="成本价" style="max-width:110px;">
+          <input class="add-input" id="stockPrice" type="number" placeholder="现价" style="max-width:110px;">
+          <input class="add-input" id="stockShares" type="number" placeholder="股数" style="max-width:100px;">
+          <button class="btn btn-primary" onclick="addHolding()">添加</button>
+        </div>
+        <div class="fin-list" id="stockList"></div>
+      </div>
+      <div class="card" style="margin-top:16px;">
+        <div class="card-header"><span class="card-icon">📰</span><span class="card-title">今日财经要闻</span><span class="card-subtitle">示例数据</span></div>
+        <div class="news-feed" id="stockNews"></div>
+      </div>
+    </div>
+
+    <!-- Tab10 计划拆解 -->
+    <div class="tab-content" id="tab-schedule">
+      <div class="card">
+        <div class="card-header"><span class="card-icon">📅</span><span class="card-title">年度/长期目标</span><span class="card-subtitle" id="planCount"></span></div>
+        <div class="add-form">
+          <input class="add-input" id="planTitle" placeholder="目标，如：一年存50000元">
+          <input class="add-input" id="planTotal" type="number" placeholder="总量" style="max-width:90px;">
+          <input class="add-input" id="planUnit" placeholder="单位，如：元/本/斤" style="max-width:100px;">
+          <input class="add-input" id="planStart" type="date" style="max-width:140px;">
+          <input class="add-input" id="planEnd" type="date" style="max-width:140px;">
+          <button class="btn btn-primary" onclick="addPlanGoal()">添加</button>
+        </div>
+        <div id="planGoalList"></div>
+      </div>
+      <div class="card" style="margin-top:16px;">
+        <div class="card-header"><span class="card-icon">✅</span><span class="card-title">今日拆解清单</span><span class="card-subtitle" id="todayBreakdownDate"></span></div>
+        <div id="todayBreakdown"></div>
+      </div>
+      <div class="card" style="margin-top:16px;">
+        <div class="card-header"><span class="card-icon">🗓️</span><span class="card-title">月度计划</span><span class="card-subtitle" id="monthPlanLabel"></span></div>
+        <div class="add-form">
+          <input class="add-input" id="monthTaskInput" placeholder="本月要做的一件重要的事">
+          <button class="btn btn-primary" onclick="addMonthTask()">添加</button>
+        </div>
+        <ul class="task-list" id="monthTaskList"></ul>
+      </div>
+    </div>
+
+    <!-- Tab11 天气 -->
+    <div class="tab-content" id="tab-weather">
+      <div class="card">
+        <div class="card-header"><span class="card-icon">🌤️</span><span class="card-title">近三日天气预报</span><span class="card-subtitle" id="weatherCityLabel"></span></div>
+        <div class="add-form">
+          <input class="add-input" id="weatherCity" placeholder="输入城市，如：北京 / 上海 / 杭州">
+          <button class="btn btn-primary" onclick="searchWeather()">查询</button>
+          <button class="btn btn-secondary btn-sm" onclick="geoWeather()">📍 定位</button>
+        </div>
+        <div id="weatherResult"><div class="empty-state">输入城市查询近三日天气，或点「定位」自动获取 🌤️</div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- 详情弹窗 -->
+<div class="modal-overlay" id="detailModal" onclick="if(event.target===this)closeDetail()">
+  <div class="modal">
+    <span class="modal-close" onclick="closeDetail()">×</span>
+    <div class="modal-title" id="modalTitle"></div>
+    <div class="modal-tags" id="modalTags"></div>
+    <div class="modal-detail" id="modalDetail"></div>
+    <div class="modal-label" id="modalAngleLabel">💡 应用建议</div>
+    <ul class="modal-angles" id="modalAngles"></ul>
+    <div class="modal-actions">
+      <a class="modal-btn douyin" id="modalDouyin" target="_blank" rel="noopener">🔗 去抖音搜</a>
+      <a class="modal-btn baidu" id="modalBaidu" target="_blank" rel="noopener">🔗 百度查详情</a>
+      <button class="modal-btn fav" id="modalFav" onclick="toggleFav()">⭐ 收藏</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===================== 工具 =====================
+function localDateKey(d) {
+  d = d || new Date();
+  var y = d.getFullYear(); var m = ('0' + (d.getMonth() + 1)).slice(-2); var day = ('0' + d.getDate()).slice(-2);
+  return y + '-' + m + '-' + day;
+}
+function loadJSON(key, def) { 
+  try { 
+    var s = localStorage.getItem(key); 
+    if (s) { 
+      var p = JSON.parse(s); 
+      if (p !== null && p !== undefined) return p; 
+    } 
+  } catch (e) {} 
+  return def !== undefined ? JSON.parse(JSON.stringify(def)) : null; 
+}
+function saveJSON(key, val) { try { localStorage.setItem(key, JSON.stringify(val)); } catch (e) {} }
+function dayOfYear() { var d = new Date(); var start = new Date(d.getFullYear(), 0, 0); return Math.floor((d - start) / 86400000); }
+
+var quotes = [
+  "种一棵树最好的时间是十年前，其次是现在。",
+  "你如何度过一天，就如何度过一生。",
+  "成长不是变得和别人一样好，而是比昨天的自己更好。",
+  "把时间花在哪里，你就会成为什么样的人。",
+  "舒适区之外，才有真正的成长。",
+  "不要以战术的勤奋，掩盖战略的懒惰。",
+  "自律给你自由，延迟满足给你未来。",
+  "今天的复利，会在某天突然显现。",
+  "你不需要很厉害才能开始，但你需要开始才能很厉害。",
+  "专注做一件事，好过平庸地做很多事。"
+];
+var quoteIndex = 0;
+var categoryMap = { growth:"成长", health:"健康", study:"学习", work:"工作", relation:"人际", review:"复盘" };
+var priMap = { high:["高优先","pri-high"], mid:["中优先","pri-mid"], low:["低优先","pri-low"] };
+
+// ===================== 默认数据 =====================
+var defaultTasks = [
+  { id:1, text:"晨间阅读30分钟（认知/成长类书籍）", cat:"growth", pri:"mid", done:false },
+  { id:2, text:"完成今日运动（跑步/力量 30分钟）", cat:"health", pri:"high", done:false },
+  { id:3, text:"学习一项新技能 45 分钟", cat:"study", pri:"mid", done:false },
+  { id:4, text:"给一位重要的人发消息关心", cat:"relation", pri:"low", done:false },
+  { id:5, text:"写今日成长日志 + 复盘", cat:"review", pri:"high", done:false }
+];
+var defaultHabits = [
+  { id:1, name:"早起", icon:"🌅", history:[] },
+  { id:2, name:"运动", icon:"🏃", history:[] },
+  { id:3, name:"阅读", icon:"📚", history:[] },
+  { id:4, name:"冥想", icon:"🧘", history:[] },
+  { id:5, name:"日复盘", icon:"📝", history:[] }
+];
+var defaultGoals = [
+  { id:1, title:"3个月读完12本书并输出读书笔记", progress:25, steps:[ {text:"建立书单与节奏",done:true}, {text:"每周读1本",done:false}, {text:"每本写1篇笔记",done:false}, {text:"月底复盘输出",done:false} ] },
+  { id:2, title:"养成每日运动的习惯（连续30天）", progress:40, steps:[ {text:"固定运动时间",done:true}, {text:"找到喜欢的运动",done:true}, {text:"连续打卡21天",done:false}, {text:"形成身份认同",done:false} ] }
+];
+
+// ===================== 运行时数据 =====================
+var tasks = loadJSON('growth_tasks', defaultTasks);
+var habits = loadJSON('growth_habits', defaultHabits);
+var journals = loadJSON('growth_journals', []);
+var goals = loadJSON('growth_goals', defaultGoals);
+var favSet = loadJSON('growth_fav', []);
+var reviewHistory = loadJSON('growth_review', []);
+var currentTaskFilter = 'all';
+var currentMood = '';
+var currentCogIndex = 0;
+var currentFavKey = '';
+
+// ===================== 认知库 =====================
+var cognitionData = [
+  { title:"复利效应", category:"思维模型", keyword:"复利效应 思维模型",
+    quote:"每天进步1%，一年后你会强大37倍；每天退步1%，一年后将所剩无几。",
+    detail:"复利不仅是金钱的规律，更是成长的核心算法。知识和技能的积累、人脉和习惯的养成，都会随时间产生指数级的回报。关键在于：开始时效果微小，但只要方向正确且持续，拐点之后会突然加速。",
+    application:["为重要的事设置每日最小行动量（如每天读5页）","接受前期的缓慢，关注累积而非即时反馈","把单次收益转化为可重复的系统"] },
+  { title:"二八定律", category:"思维模型", keyword:"二八定律 帕累托法则",
+    quote:"80%的结果，往往来自20%的关键投入。",
+    detail:"帕累托法则指出，少数关键因素决定了大部分成果。在个人成长中，识别那20%的高杠杆行动（深度工作、核心技能、关键关系），比平均用力更高效。",
+    application:["每周复盘：哪些行动带来最大产出？加倍投入","学会对低价值事务说不和委托","把精力聚焦在能形成壁垒的事情上"] },
+  { title:"第一性原理", category:"思维模型", keyword:"第一性原理 马斯克",
+    quote:"把问题拆解到最基础的真理，再从那里重新构建。",
+    detail:"马斯克推崇的思考方式：不依赖类比和经验，而是回归事物最底层的物理/逻辑真相，重新推理。它能帮你跳出群体共识，发现被忽略的解决方案。",
+    application:["面对难题时问：这件事最本质的前提是什么？","警惕随大流的默认选项","用一个全新角度重新搭建自己的方案"] },
+  { title:"成长型思维", category:"心理学", keyword:"成长型思维 德韦克",
+    quote:"能力不是固定的，而是像肌肉一样可以通过练习增长。",
+    detail:"心理学家德韦克提出：相信能力可成长的人，更愿意接受挑战、从失败中学习；而固定型思维者会回避困难以保护自我形象。思维模式的差异，长远看决定了成就的上限。",
+    application:["把'我不行'替换为'我暂时还不会'","把失败重新定义为反馈和数据","夸努力而非天赋，建立正确归因"] },
+  { title:"费曼技巧", category:"学习方法", keyword:"费曼技巧 学习方法",
+    quote:"如果你不能简单地解释一件事，说明你还没真正理解它。",
+    detail:"由物理学家费曼命名的深度学习法：选一个概念，假装教给一个外行，卡住的地方就是你知识的漏洞，回去补强后再次简化。它是检验和理解知识最有效的方法之一。",
+    application:["学完一个概念，立刻用自己的话讲一遍","用比喻和生活例子降低理解门槛","定期把学到的东西教给别人"] },
+  { title:"延迟满足", category:"心理学", keyword:"延迟满足 棉花糖实验",
+    quote:"能为了更大的未来收益，放弃眼前小诱惑的人，走得更远。",
+    detail:"棉花糖实验中，能等待的孩子长大后表现更优。延迟满足不是压抑欲望，而是用更强的未来自我对话，做出长期有利的选择。它是自律和成功的底层能力。",
+    application:["设置'10分钟缓冲'再屈服于诱惑","把长期目标视觉化，增强未来感","用小奖励构建延迟满足的肌肉记忆"] },
+  { title:"习惯叠加", category:"习惯科学", keyword:"习惯叠加 行为设计",
+    quote:"在已有习惯之后，叠加一个新习惯，成功率大幅提升。",
+    detail:"行为科学中的习惯叠加公式：'在[现有习惯]之后，我将[新习惯]'。借助已有行为作为触发锚点，能大幅降低新习惯的执行阻力，无需额外意志力。",
+    application:["刷牙后立刻冥想2分钟","喝完晨间水后读一页书","通勤后记录一条今日想法"] },
+  { title:"两分钟法则", category:"习惯科学", keyword:"两分钟法则 原子习惯",
+    quote:"任何新习惯都应先压缩到两分钟内就能完成。",
+    detail:"《原子习惯》中的方法：新习惯的启动门槛要极低——'读一页'而非'读一本书'。降低启动阻力，先让行为发生，再逐步扩展。行动的发生比完美更重要。",
+    application:["把'运动'先变成'换上运动鞋'","把'写作'先变成'打开文档写一句'","用极小门槛打破拖延的启动壁垒"] },
+  { title:"邓宁-克鲁格效应", category:"心理学", keyword:"邓宁克鲁格效应 认知偏差",
+    quote:"能力越低的人，越容易高估自己；能力越高，越能看见自己的不足。",
+    detail:"这一认知偏差解释了为何初学者常过度自信，而专家反而谦逊。意识到自己可能处于'不知道自己不知道'的阶段，是持续学习和保持空杯心态的开始。",
+    application:["对强烈确信的观点保持怀疑","用'我还不知道什么'替代'我都知道'","向更高水平的人学习以校准自我认知"] },
+  { title:"系统思维", category:"思维模型", keyword:"系统思维 反馈回路",
+    quote:"关注系统结构，而非单个事件，才能治本。",
+    detail:"系统思维强调看事物之间的连接与反馈回路，而非孤立事件。许多问题反复出现，是因为底层系统结构没变。改变系统，行为会自然改变。",
+    application:["遇到重复问题，追问背后的系统诱因","设计环境让好习惯自动发生","用反馈机制（打卡/数据）驱动行为"] },
+  { title:"及时反馈", category:"思维模型", keyword:"及时反馈 刻意练习",
+    quote:"没有反馈的努力，只是低水平重复。",
+    detail:"刻意练习的核心是高质量、及时的反馈。没有反馈，我们容易在错误的方向上越练越熟。成长=行动+反馈+修正，三者缺一不可。",
+    application:["为关键目标建立可量化反馈（数据/复盘）","主动向他人寻求客观评价","每周固定做一次结构化复盘"] },
+  { title:"锚定效应", category:"心理学", keyword:"锚定效应 认知偏差",
+    quote:"你做的判断，很容易被最先接触到的信息锁定。",
+    detail:"人在做决策时，会不自觉地被第一个信息（锚）影响，后续判断围绕它调整。意识到这一点，能帮你在目标设定、自我评价中不被初始参照绑架。",
+    application:["设定目标时警惕'别人都这样'的默认锚","用自身过去最好状态做参照而非平均值","主动设定更高、更合理的基准"] }
+];
+
+// ===================== 娱乐创作数据 =====================
+var hotTopics = [
+  { rank:1, title:"歌手2026歌王之战", desc:"孙楠冲刺赛收视第一，全网476亿次传播", type:"entertainment", heat:"476亿热度",
+    keyword:"歌手2026歌王之战",
+    detail:"湖南卫视/芒果TV音综《歌手2026》于8月7日举行歌王之战直播。孙楠以守关唱将身份登台，万妮达、胡彦斌、张远等七位歌手锁定歌王候选席位，节目全网传播量累计达476.9亿次，四网同时段省级卫视收视第一。",
+    angles:["直播开启观众点歌/翻唱挑战赛，前几名送福利","复盘选手名场面，做音响设备/唱功科普向","用歌单投票互动，引导粉丝在评论区刷屏自己最爱的一首歌"] },
+  { rank:2, title:"敖子逸仙侠剧师兄太稳健", desc:"搭档敖瑞鹏，仙侠题材新剧预热", type:"entertainment", heat:"热搜TOP3",
+    keyword:"敖子逸 师兄太稳健",
+    detail:"敖子逸接下来进入宣传期，搭档敖瑞鹏出演仙侠题材剧《师兄太稳健》，年轻班底+仙侠设定；另在接触古装悬疑短剧《云京诡案录》男主。",
+    angles:["仙侠名场面二创/模仿，联动剧迷粉丝","预测剧情走向，发起猜结局投票","植入追剧零食/周边带货"] },
+  { rank:3, title:"台风白海豚将影响华东", desc:"7日后趋向华东沿海，多部门已启动预警", type:"social", heat:"持续霸榜",
+    keyword:"台风白海豚",
+    detail:"台风白海豚继续向西偏北方向移动，7日后将趋向我国华东沿海。国家防总、应急管理部已针对浙江、福建启动防汛防台风四级应急响应。",
+    angles:["台风天居家直播，聊安全感和陪伴感","科普防灾避坑知识，实用又涨粉","植入居家好物/应急物资"] },
+  { rank:4, title:"抖音电商AI内容规范更新", desc:"AI换品剪辑、虚假场景带货内容直接拦截", type:"tech", heat:"行业关注",
+    keyword:"抖音电商 AI内容规范",
+    detail:"抖音电商更新商品内容规范，新增AI合成短视频种草内容审核细则，AI换品剪辑、虚假场景带货内容将被直接拦截限流。虚拟主播带货同样需履行售后赔付义务。",
+    angles:["做一期AI带货避坑指南知识直播","解读新规对中小主播的具体影响","合规直播话术教学"] },
+  { rank:5, title:"多地牛蛙抗生素超标", desc:"福建东山、广东澄海等地已封存抽检", type:"life", heat:"食品安全",
+    keyword:"牛蛙 抗生素超标",
+    detail:"多个电商平台牛蛙产品被检出抗生素超标，最高超标逾5倍，部分样本检出禁用兽药呋喃唑酮。福建东山、广东澄海、饶平等地已通报涉事产品封存并抽检。",
+    angles:["夏季食品安全话题切入，聊怎么挑水产","延伸健康饮食科普，建立专业人设","植入食品溯源/检测类内容"] },
+  { rank:6, title:"青岛仓库火灾", desc:"青岛象屿速传供应链仓库发生火灾", type:"social", heat:"社会关注",
+    keyword:"青岛仓库火灾",
+    detail:"8月2日17时许，位于青岛市黄岛区七星河路363号的青岛象屿速传供应链有限公司仓库发生火灾，引发仓储物流安全关注。",
+    angles:["聊物流仓储安全/消防知识","引申到家庭防火小贴士","社会热点轻量解读，带温度表达"] },
+  { rank:7, title:"披荆斩棘的哥哥2026", desc:"武艺婉拒邀约，引发粉丝热议", type:"entertainment", heat:"娱乐热议",
+    keyword:"披荆斩棘的哥哥2026",
+    detail:"《披荆斩棘的哥哥2026》原本邀请了武艺，但武艺考虑后推掉了邀约，引发粉丝讨论。",
+    angles:["哥哥们名场面回顾互动","发起最想看到的哥哥投票","怀旧向内容，唤起粉丝情怀"] },
+  { rank:8, title:"李兰迪进组千夜奇谭", desc:"8月搭档何与出演新剧", type:"entertainment", heat:"新剧资讯",
+    keyword:"李兰迪 千夜奇谭",
+    detail:"李兰迪8月份进组《千夜奇谭》，搭档何与出演。",
+    angles:["新剧预热讨论","演员过往作品盘点","剧迷向互动"] },
+  { rank:9, title:"歌手直播进影院", desc:"芒果TV开启沉浸式观影新模式", type:"entertainment", heat:"创新模式",
+    keyword:"歌手2026 直播进影院",
+    detail:"7月31日晚，《歌手2026》直播进影院活动在湖南长沙MC影城举办，现场数百名观众开启沉浸式观影体验，音综开启观演新模式。",
+    angles:["聊边看边聊的陪伴式直播模式","分析音综+影院新玩法","做观影/听歌场景好物推荐"] },
+  { rank:10, title:"广东汕尾2.9级地震", desc:"海丰县发生地震，震源深度10公里", type:"social", heat:"自然灾害",
+    keyword:"广东汕尾地震",
+    detail:"8月4日15时21分，中国地震台网测定广东汕尾市海丰县发生2.9级地震，震源深度10公里。",
+    angles:["科普地震常识/避险","轻量社会热点带过，避免制造焦虑","延伸家居安全话题"] },
+  { rank:11, title:"普京宣布军事改革", desc:"俄国防部重大人事调整，组建无人系统部队", type:"social", heat:"国际军事",
+    keyword:"普京 军事改革",
+    detail:"俄罗斯总统普京召开国防部高层会议，宣布多项重大人事调整及军事改革，涉及国防部副部长更换、集团军指挥官轮换，并组建全新兵种——无人系统部队。",
+    angles:["国际军事热点轻解读","延伸科技/无人机话题","注意政治敏感度，客观陈述"] },
+  { rank:12, title:"泰国校园枪击7死15伤", desc:"暖武里府初中生作案，含3名师生遇难", type:"social", heat:"重大事件",
+    keyword:"泰国校园枪击",
+    detail:"泰国暖武里府发生校园枪击案，枪手为一名初中生，已造成包括3名教师和3名学生在内的7人死亡、15人受伤，其中2人重伤。",
+    angles:["社会安全议题，表达需克制","引申校园安全/心理健康关注","避免过度消费悲剧"] }
+];
+var liveInspiration = [
+  { emoji:"🎤", title:"K歌互动直播", desc:"蹭歌手2026热度，开启观众点歌挑战赛，前3名送小礼物",
+    keyword:"直播 点歌 互动",
+    detail:"利用《歌手2026》热度，在直播间开展观众点歌/翻唱挑战，结合实时弹幕互动，调动直播间参与感与留存。",
+    angles:["开场用热门歌曲BGM引流","设置本周点歌榜增强留存","连麦粉丝合唱提升互动率"] },
+  { emoji:"🌪️", title:"台风天在家直播", desc:"台风白海豚来袭，在家直播宅家干点啥系列",
+    keyword:"台风天 居家直播",
+    detail:"台风季居家场景，做陪伴式直播，边聊天气边带居家好物，营造 rainy day 氛围感。",
+    angles:["营造 rainy day vibe 氛围","植入零食/热饮/香薰","评论区聊家乡天气拉近距离"] },
+  { emoji:"🍗", title:"食品安全话题直播", desc:"牛蛙抗生素超标事件延伸，聊夏季饮食安全",
+    keyword:"食品安全 直播",
+    detail:"借牛蛙抗生素超标事件，做夏季饮食安全科普，专业但不说教。",
+    angles:["用避坑清单形式呈现","植入安全食材/厨具","建立可信专业人设"] },
+  { emoji:"🧪", title:"AI主播政策解读", desc:"抖音新规下虚拟主播如何合规带货？",
+    keyword:"AI主播 合规 带货",
+    detail:"解读抖音AI内容新规，帮中小主播合规带货，吸引商家/主播粉丝。",
+    angles:["3个新规雷区清单式讲解","现场演示合规脚本","吸引商家/主播粉丝关注"] },
+  { emoji:"🎬", title:"明星新剧预测直播", desc:"敖子逸新剧预告，聊聊仙侠剧套路+预测剧情",
+    keyword:"明星新剧 预测 直播",
+    detail:"敖子逸等新剧预告，做剧情预测互动，吸引剧迷参与。",
+    angles:["发起猜剧情投票","剧迷弹幕讨论","植入追剧周边"] },
+  { emoji:"🏠", title:"反诈/消费维权直播", desc:"暑期消费陷阱多，结合时事做轻知识型直播",
+    keyword:"反诈 消费维权 直播",
+    detail:"暑期消费陷阱多，结合时事做轻知识型直播，接地气又涨粉。",
+    angles:["真实案例拆解","避坑指南收藏向内容","接地气涨粉"] }
+];
+var newsData = [
+  { badge:"国内", cls:"internal", title:"习近平：加快建设健康中国，强调医疗科技创新与国防现代化", meta:"求是杂志 · 2026-08-03",
+    keyword:"加快建设健康中国",
+    detail:"《求是》杂志发表习近平总书记重要文章《加快建设健康中国》；同期强调强化政治引领、深化创新发展，高质量推进国防和军队现代化。",
+    angles:["健康中国政策科普向内容需谨慎客观","可延伸全民健康/运动话题"] },
+  { badge:"国际", cls:"global", title:"普京召开国防部高层会议：宣布重大军事改革，组建无人系统部队", meta:"今日俄罗斯 · 2026-08-06",
+    keyword:"普京 军事改革",
+    detail:"普京宣布俄国防部重大人事调整，组建无人系统部队，基于特别军事行动实战经验优化指挥体系、提升作战效能。",
+    angles:["国际军事热点轻解读","延伸科技/无人机话题","注意政治敏感度，客观陈述"] },
+  { badge:"经济", cls:"economy", title:"前7个月我国货物贸易进出口超30万亿元，同比增长17.3%", meta:"海关总署 · 2026-08-07",
+    keyword:"前7个月进出口30万亿元",
+    detail:"海关总署8月7日发布数据，2026年前7个月我国货物贸易进出口总值30.13万亿元，同比增长17.3%，延续良好增长态势。",
+    angles:["经济数据科普，做外贸冷知识向","延伸国货出海/跨境电商话题"] },
+  { badge:"社会", cls:"internal", title:"泰国暖武里府发生校园枪击案，已致7人死亡含3名师生，枪手为初中生", meta:"央视新闻 · 2026-08-07",
+    keyword:"泰国校园枪击",
+    detail:"泰国暖武里府校园枪击案造成7死15伤，枪手为初中生，死者包括3名教师和3名学生。",
+    angles:["社会安全议题，表达需克制","引申校园安全/心理健康关注","避免过度消费悲剧"] },
+  { badge:"国际", cls:"global", title:"缅甸总统敏昂莱访问泰国，两国签署劳工合作协议", meta:"曼谷时报 · 2026-08-06",
+    keyword:"缅甸总统 访泰",
+    detail:"缅甸总统敏昂莱8月6日抵达曼谷展开正式访问，两国签署涉及劳工合作的协议及谅解备忘录。",
+    angles:["东南亚动态轻解读","延伸区域合作话题"] },
+  { badge:"科技", cls:"tech", title:"新华社明确AI训练数据版权规范：不得擅自盗用自媒体原创图文短视频", meta:"新华社 · 2026-08-02",
+    keyword:"AI训练数据 版权治理",
+    detail:"新华社发文聚焦生成式人工智能版权治理，明确AI训练数据不得擅自盗用自媒体原创图文、短视频，侵权主体将承担相应赔偿责任。",
+    angles:["创作者版权保护科普，强相关","做如何保护自己的原创直播","解读对自媒体行业影响"] },
+  { badge:"国内", cls:"internal", title:"多地加码购车补贴，重庆首次将电驴纳入购新政策范围", meta:"经济参考报 · 2026-08-04",
+    keyword:"重庆 购车补贴 电驴",
+    detail:"多地加码购车补贴，重庆首次将电动车（电驴）纳入购新政策范围。",
+    angles:["本地生活/消费政策解读","延伸出行好物种草"] },
+  { badge:"经济", cls:"economy", title:"抖音电商更新AI合成短视频审核规范：AI换品剪辑、虚假场景带货直接拦截限流", meta:"抖音官方 · 2026-08-02",
+    keyword:"抖音 AI审核规范",
+    detail:"抖音电商更新AI合成短视频审核规范，AI换品剪辑、虚假场景带货内容直接拦截限流，视频号也加大打击AI变脸虚假剧情直播。",
+    angles:["解读平台规则变化","帮主播避雷","合规内容创作教学"] },
+  { badge:"国际", cls:"global", title:"梅德韦杰夫批评日本：核爆纪念未提及责任方", meta:"今日俄罗斯 · 2026-08-07",
+    keyword:"梅德韦杰夫 日本 核爆",
+    detail:"梅德韦杰夫就广岛长崎核爆纪念活动发表评论，批评日本未提及投下原子弹的责任方。",
+    angles:["国际时事轻解读，注意中立客观","避免过度立场表达"] },
+  { badge:"社会", cls:"internal", title:"上海开出首批网约车平台集中处罚：涉及12个平台、479辆不合规车，罚款超2500万", meta:"澎湃新闻 · 2026-08-04",
+    keyword:"上海 网约车 处罚",
+    detail:"上海开出首批网约车平台集中处罚，涉及12个平台、479辆不合规车，罚款超2500万元。",
+    angles:["本地民生话题，聊出行安全","延伸平台合规讨论"] }
+];
+var aiSuggestions = [
+  { title:"留存率提升", content:["前3秒必须出现画面冲突或声音反差","每30秒设置一个悬念点防止跳出","结尾用评论区互动问题提升评论率触发算法","封面文字控制在5字以内，制造视觉压迫感"] },
+  { title:"互动率提升", content:["直播中每10分钟抛出一次选择题（选A还是B？）","善用粉丝专属福利话术刺激关注转化","连麦环节设置奖励机制，提高参与感","评论区置顶引导性问题，带动滚动弹幕"] },
+  { title:"带货转化优化", content:["产品讲解不超过3分钟，保持节奏紧凑","使用对比实验展示产品效果（如清洁类）","设置限时限量制造紧迫感（仅剩XX份）","粉丝评价截图展示，增强信任背书"] },
+  { title:"热点蹭流量技巧", content:["热点事件发生后30分钟内发布相关内容效果最佳","结合自己账号人设，勿生硬蹭热点","热点+实用干货=高完播率组合","热点话题使用抖音挑战赛BGM/特效增加曝光"] }
+];
+var suggestionIndex = 0;
+
+// ===================== 记账本 =====================
+var financeCategories = {
+  expense: [['🍚 餐饮','餐饮'],['🚌 交通','交通'],['🛒 购物','购物'],['🎮 娱乐','娱乐'],['📚 学习','学习'],['🏥 医疗','医疗'],['🏠 居住','居住'],['💡 其他','其他']],
+  income: [['💰 工资','工资'],['🎁 兼职','兼职'],['📈 理财','理财'],['💸 其他','其他']]
+};
+var financeData = loadJSON('growth_finance', []);
+function renderFinanceCategories() {
+  var sel = document.getElementById('finCategory'); if (!sel) return;
+  var type = document.getElementById('finType').value;
+  sel.innerHTML = financeCategories[type].map(function(c){ return '<option value="'+c[1]+'">'+c[0]+'</option>'; }).join('');
+}
+function addTransaction() {
+  var type = document.getElementById('finType').value;
+  var amount = parseFloat(document.getElementById('finAmount').value);
+  if (!amount || amount <= 0) { alert('请输入有效金额'); return; }
+  var category = document.getElementById('finCategory').value;
+  var note = document.getElementById('finNote').value.trim();
+  var date = document.getElementById('finDate').value || localDateKey();
+  financeData.unshift({ id:Date.now(), type:type, amount:amount, category:category, note:note, date:date });
+  saveJSON('growth_finance', financeData.slice(0, 200));
+  document.getElementById('finAmount').value = ''; document.getElementById('finNote').value = '';
+  renderFinance();
+  document.getElementById('statusBadge').textContent = '💰 已记账'; setTimeout(function(){ document.getElementById('statusBadge').textContent = '✨ 今天也要成长'; }, 2000);
+}
+function delTransaction(id) { financeData = financeData.filter(function(x){ return x.id !== id; }); saveJSON('growth_finance', financeData); renderFinance(); }
+function renderFinance() {
+  if (!document.getElementById('finDate')) return;
+  var now = new Date(); var ym = now.getFullYear() + '-' + ('0'+(now.getMonth()+1)).slice(-2);
+  document.getElementById('finMonth').textContent = now.getFullYear() + '年' + (now.getMonth()+1) + '月';
+  var monthItems = financeData.filter(function(t){ return t.date && t.date.indexOf(ym) === 0; });
+  var income = monthItems.filter(function(t){ return t.type==='income'; }).reduce(function(s,t){ return s+t.amount; },0);
+  var expense = monthItems.filter(function(t){ return t.type==='expense'; }).reduce(function(s,t){ return s+t.amount; },0);
+  document.getElementById('finIncome').textContent = '¥' + income.toFixed(0);
+  document.getElementById('finExpense').textContent = '¥' + expense.toFixed(0);
+  document.getElementById('finBalance').textContent = '¥' + (income-expense).toFixed(0);
+  var cats = {};
+  monthItems.filter(function(t){ return t.type==='expense'; }).forEach(function(t){ cats[t.category] = (cats[t.category]||0) + t.amount; });
+  var entries = Object.keys(cats).map(function(k){ return [k, cats[k]]; });
+  entries.sort(function(a,b){ return b[1]-a[1]; });
+  var maxVal = entries.length ? entries[0][1] : 1;
+  var emojiMap = {}; financeCategories.expense.concat(financeCategories.income).forEach(function(c){ emojiMap[c[1]] = c[0].split(' ')[0]; });
+  document.getElementById('finCategoryStats').innerHTML = entries.length ? entries.map(function(e){
+    var pct = Math.round(e[1]/maxVal*100);
+    return '<div class="fin-cat-item"><span class="fin-cat-name">'+(emojiMap[e[0]]||'')+e[0]+'</span><div class="fin-cat-bar-bg"><div class="fin-cat-bar" style="width:'+pct+'%"></div></div><span class="fin-cat-amount">¥'+e[1].toFixed(0)+'</span></div>';
+  }).join('') : '<div class="empty-state">本月还没有支出记录</div>';
+  document.getElementById('finCount').textContent = '共 ' + financeData.length + ' 笔';
+  document.getElementById('finList').innerHTML = financeData.length ? financeData.slice(0,60).map(function(t){
+    var emoji = emojiMap[t.category] || '💡';
+    var sign = t.type==='income' ? '+' : '-';
+    return '<div class="fin-item"><span class="fin-emoji">'+emoji+'</span><div class="fin-info"><div class="fin-note">'+t.category+(t.note?(' · '+t.note):'')+'</div><div class="fin-sub">'+t.date+'</div></div><span class="fin-amount '+(t.type==='income'?'inc':'exp')+'">'+sign+'¥'+t.amount.toFixed(2)+'</span><button class="fin-del" onclick="delTransaction('+t.id+')">🗑</button></div>';
+  }).join('') : '<div class="empty-state">还没有记账，记下第一笔吧 💰</div>';
+}
+function exportFinance() {
+  if (financeData.length === 0) { alert('暂无账单可导出'); return; }
+  var csv = '日期,类型,分类,备注,金额\n';
+  financeData.forEach(function(t){ csv += '"'+t.date+'","'+(t.type==='income'?'收入':'支出')+'","'+t.category+'","'+(t.note||'')+'","'+t.amount.toFixed(2)+'"\n'; });
+  var blob = new Blob(['\ufeff'+csv], { type:'text/csv;charset=utf-8;' }); var url = URL.createObjectURL(blob);
+  var a = document.createElement('a'); a.href = url; a.download = '账单_' + localDateKey() + '.csv'; a.click(); URL.revokeObjectURL(url);
+}
+function clearFinance() { if (confirm('确定清空所有账单记录？')) { financeData = []; saveJSON('growth_finance', financeData); renderFinance(); } }
+
+// ===================== 股市 =====================
+var stockIndicesData = [
+  { name:'上证指数', value:3598.6, change:0.82 },
+  { name:'深证成指', value:11452.3, change:-0.34 },
+  { name:'创业板指', value:2298.1, change:1.21 },
+  { name:'恒生指数', value:17986.5, change:0.56 },
+  { name:'纳斯达克', value:16980.2, change:-0.61 }
+];
+var holdings = loadJSON('growth_holdings', []);
+var stockNewsData = [
+  { badge:'A股', title:'证监会：进一步引导中长期资金入市', meta:'2026-08-08', keyword:'中长期资金入市', detail:'证监会提出进一步引导保险、社保、养老金等中长期资金入市，优化北向资金披露机制，有助于改善市场流动性与长期估值体系。', angles:['关注低估值蓝筹与红利资产','观察增量资金实际入场节奏'] },
+  { badge:'政策', title:'央行开展逆回购维护流动性', meta:'2026-08-08', keyword:'央行 逆回购', detail:'央行在月末时点开展逆回购操作，呵护市场流动性合理充裕，对债市与权益市场情绪均有支撑。', angles:['关注资金利率变化','留意后续降准降息预期'] },
+  { badge:'行业', title:'AI算力板块持续活跃', meta:'2026-08-08', keyword:'AI算力 板块', detail:'AI算力、光模块等科技方向维持高景气，机构看好下半年需求，但短期需警惕交易拥挤带来的波动。', angles:['区分真正业绩兑现与概念炒作','关注估值与业绩匹配度'] },
+  { badge:'美股', title:'纳指小幅回调', meta:'2026-08-08', keyword:'纳斯达克 回调', detail:'美股纳指小幅回落，市场聚焦本周非农数据与美联储政策路径，科技股估值仍受利率预期牵制。', angles:['关注人民币汇率联动','留意海外科技龙头动向'] },
+  { badge:'港股', title:'恒生科技指数反弹', meta:'2026-08-08', keyword:'恒生科技 反弹', detail:'恒生科技指数回暖，南向资金净流入扩大，港股估值修复行情受到关注。', angles:['关注南向资金流向','评估港股与A股联动'] }
+];
+
+// ===================== 计划拆解 =====================
+var planGoals = loadJSON('growth_plangoals', []);
+var planCheckins = loadJSON('growth_plancheckins', {});
+var monthPlans = loadJSON('growth_monthplan', {});
+function daysBetween(a, b) {
+  var d1 = new Date(a + 'T00:00:00'); var d2 = new Date(b + 'T00:00:00');
+  return Math.max(0, Math.round((d2 - d1) / 86400000));
+}
+function currentMonthKey() { var d = new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2); }
+function addPlanGoal() {
+  var title = document.getElementById('planTitle').value.trim();
+  var total = parseFloat(document.getElementById('planTotal').value);
+  var unit = document.getElementById('planUnit').value.trim() || '';
+  var start = document.getElementById('planStart').value || localDateKey();
+  var end = document.getElementById('planEnd').value;
+  if (!title || !total || !end) { alert('请填写目标、总量和结束日期'); return; }
+  planGoals.push({ id:Date.now(), title:title, total:total, unit:unit, start:start, end:end, done:0 });
+  saveJSON('growth_plangoals', planGoals);
+  ['planTitle','planTotal','planUnit','planEnd'].forEach(function(id){ document.getElementById(id).value = ''; });
+  renderSchedule();
+}
+function delPlanGoal(id) { planGoals = planGoals.filter(function(x){ return x.id !== id; }); saveJSON('growth_plangoals', planGoals); renderSchedule(); }
+function updatePlanDone(id) {
+  var g = planGoals.filter(function(x){ return x.id === id; })[0]; if (!g) return;
+  var v = prompt('已累计完成（' + g.unit + '）：', g.done);
+  if (v === null) return;
+  g.done = parseFloat(v) || 0; saveJSON('growth_plangoals', planGoals); renderSchedule();
+}
+function renderSchedule() {
+  if (!document.getElementById('planGoalList')) return;
+  document.getElementById('planCount').textContent = planGoals.length + ' 个';
+  var html = ''; var today = localDateKey();
+  planGoals.forEach(function(g) {
+    var totalDays = daysBetween(g.start, g.end) || 1;
+    var daily = g.total / totalDays;
+    var elapsed = daysBetween(g.start, today);
+    var shouldByNow = Math.max(0, daily * elapsed);
+    var pct = g.total ? Math.min(100, Math.round(g.done / g.total * 100)) : 0;
+    var diff = g.done - shouldByNow;
+    var status = diff >= 0 ? '<span style="color:#00b894;">✅ 领先 ' + Math.abs(diff).toFixed(1) + g.unit + '</span>' : '<span style="color:#fd79a8;">⚠️ 落后 ' + Math.abs(diff).toFixed(1) + g.unit + '，需补上</span>';
+    html += '<div class="goal-card"><div class="goal-head"><span class="goal-title">' + g.title + '</span><span class="goal-pct">' + pct + '%</span><button class="goal-del" onclick="delPlanGoal(' + g.id + ')">🗑</button></div>' +
+      '<div class="progress-bar-bg"><div class="progress-bar-fill" style="width:' + pct + '%"></div></div>' +
+      '<div style="font-size:12px; color:#999; margin-top:10px; line-height:1.9;">📦 总量 ' + g.total + g.unit + ' ｜ 已完成 ' + g.done.toFixed(1) + g.unit + '<br>📆 区间 ' + g.start + ' → ' + g.end + '（' + totalDays + '天）<br>➗ 日均需 ' + daily.toFixed(1) + g.unit + ' ｜ 至今日应累计 ' + shouldByNow.toFixed(1) + g.unit + '<br>' + status + '</div>' +
+      '<button class="btn btn-secondary btn-sm" style="margin-top:10px;" onclick="updatePlanDone(' + g.id + ')">📝 记录已完成累计</button></div>';
+  });
+  document.getElementById('planGoalList').innerHTML = html || '<div class="empty-state">还没有目标，添加你的第一个年度/月度计划 🎯</div>';
+  renderTodayBreakdown();
+}
+function renderTodayBreakdown() {
+  var today = localDateKey();
+  document.getElementById('todayBreakdownDate').textContent = today;
+  var checkins = planCheckins[today] || {};
+  var items = planGoals.filter(function(g){ return g.end >= today && g.start <= today; }).map(function(g){
+    var totalDays = daysBetween(g.start, g.end) || 1;
+    var daily = g.total / totalDays;
+    var done = checkins[g.id];
+    return '<div class="fin-item"><span class="fin-emoji">🎯</span><div class="fin-info"><div class="fin-note">' + g.title + '</div><div class="fin-sub">今日需完成 ' + daily.toFixed(1) + g.unit + '</div></div><button class="habit-btn' + (done ? ' done' : '') + '" onclick="togglePlanCheckin(' + g.id + ')">✓</button></div>';
+  });
+  document.getElementById('todayBreakdown').innerHTML = items.length ? items.join('') : '<div class="empty-state">今天没有进行中的目标，添加计划后自动生成每日拆解 ✨</div>';
+}
+function togglePlanCheckin(id) {
+  var today = localDateKey();
+  if (!planCheckins[today]) planCheckins[today] = {};
+  planCheckins[today][id] = !planCheckins[today][id];
+  saveJSON('growth_plancheckins', planCheckins);
+  renderTodayBreakdown();
+}
+function addMonthTask() {
+  var text = document.getElementById('monthTaskInput').value.trim();
+  if (!text) { alert('请输入事项'); return; }
+  var mk = currentMonthKey();
+  if (!monthPlans[mk]) monthPlans[mk] = [];
+  monthPlans[mk].push({ id:Date.now(), text:text, done:false });
+  saveJSON('growth_monthplan', monthPlans);
+  document.getElementById('monthTaskInput').value = '';
+  renderMonthPlan();
+}
+function toggleMonthTask(id) {
+  var mk = currentMonthKey(); var arr = monthPlans[mk] || [];
+  var t = arr.filter(function(x){ return x.id === id; })[0]; if (t) { t.done = !t.done; saveJSON('growth_monthplan', monthPlans); renderMonthPlan(); }
+}
+function delMonthTask(id) {
+  var mk = currentMonthKey(); monthPlans[mk] = (monthPlans[mk] || []).filter(function(x){ return x.id !== id; }); saveJSON('growth_monthplan', monthPlans); renderMonthPlan();
+}
+function renderMonthPlan() {
+  if (!document.getElementById('monthTaskList')) return;
+  var mk = currentMonthKey(); var d = new Date();
+  document.getElementById('monthPlanLabel').textContent = d.getFullYear() + '年' + (d.getMonth() + 1) + '月';
+  var arr = monthPlans[mk] || [];
+  document.getElementById('monthTaskList').innerHTML = arr.length ? arr.map(function(t){
+    return '<li class="task-item"><div class="task-check' + (t.done ? ' done' : '') + '" onclick="toggleMonthTask(' + t.id + ')">✓</div><div class="task-body"><div class="task-text' + (t.done ? ' done' : '') + '" onclick="toggleMonthTask(' + t.id + ')">' + t.text + '</div></div><button class="task-del" onclick="delMonthTask(' + t.id + ')">🗑</button></li>';
+  }).join('') : '<div class="empty-state">本月还没有计划，添加即可 ✍️</div>';
+}
+
+// ===================== 天气 =====================
+function weatherCodeMap(code) {
+  var m = {
+    0:['☀️','晴'],1:['🌤️','晴间多云'],2:['⛅','多云'],3:['☁️','阴'],
+    45:['🌫️','雾'],48:['🌫️','雾凇'],
+    51:['🌦️','小毛毛雨'],53:['🌦️','毛毛雨'],55:['🌦️','大毛毛雨'],
+    61:['🌧️','小雨'],63:['🌧️','中雨'],65:['🌧️','大雨'],
+    66:['🌧️','冻雨'],67:['🌧️','强冻雨'],
+    71:['🌨️','小雪'],73:['🌨️','中雪'],75:['🌨️','大雪'],77:['🌨️','雪粒'],
+    80:['🌦️','阵雨'],81:['🌦️','强阵雨'],82:['⛈️','暴雨'],
+    85:['🌨️','阵雪'],86:['🌨️','强阵雪'],
+    95:['⛈️','雷暴'],96:['⛈️','雷暴冰雹'],99:['⛈️','强雷暴冰雹']
+  };
+  var v = m[code] || ['🌡️','未知']; return { emoji:v[0], text:v[1] };
+}
+function fmtDate(s){ var d = new Date(s + 'T00:00:00'); var wk = ['日','一','二','三','四','五','六'][d.getDay()]; return (d.getMonth()+1) + '/' + d.getDate() + ' 周' + wk; }
+function renderWeatherCards(d) {
+  if (!d || !d.daily) return '<div class="empty-state">暂无数据</div>';
+  var days = d.daily; var html = '<div class="stat-grid" style="grid-template-columns:repeat(3,1fr);">'; 
+  for (var i = 0; i < Math.min(3, days.time.length); i++) {
+    var wm = weatherCodeMap(days.weather_code[i]);
+    html += '<div class="stat-card" style="padding:16px 8px;"><div class="stock-name">' + fmtDate(days.time[i]) + '</div><div style="font-size:34px;margin:8px 0;">' + wm.emoji + '</div><div class="stock-value" style="font-size:18px;">' + days.temperature_2m_max[i].toFixed(0) + '° / ' + days.temperature_2m_min[i].toFixed(0) + '°</div><div class="stock-name" style="margin-top:6px;">' + wm.text + '</div></div>';
+  }
+  return html + '</div>';
+}
+function searchWeather() {
+  var city = document.getElementById('weatherCity').value.trim();
+  if (!city) { alert('请输入城市'); return; }
+  document.getElementById('weatherResult').innerHTML = '<div class="empty-state">查询中…</div>';
+  fetch('https://geocoding-api.open-meteo.com/v1/search?name=' + encodeURIComponent(city) + '&count=1&language=zh')
+    .then(function(r){ return r.json(); })
+    .then(function(g){
+      if (!g.results || !g.results.length) { document.getElementById('weatherResult').innerHTML = '<div class="empty-state">未找到该城市，试试「北京」「Shanghai」</div>'; return; }
+      var loc = g.results[0];
+      document.getElementById('weatherCityLabel').textContent = loc.name + (loc.country ? '，' + loc.country : '');
+      saveJSON('growth_weathercity', loc.name);
+      return fetch('https://api.open-meteo.com/v1/forecast?latitude=' + loc.latitude + '&longitude=' + loc.longitude + '&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=3');
+    })
+    .then(function(r){ return r ? r.json() : null; })
+    .then(function(d){ if (d) document.getElementById('weatherResult').innerHTML = renderWeatherCards(d); })
+    .catch(function(){ document.getElementById('weatherResult').innerHTML = '<div class="empty-state">查询失败，请检查网络（需联网）</div>'; });
+}
+function geoWeather() {
+  if (!navigator.geolocation) { alert('当前浏览器不支持定位'); return; }
+  document.getElementById('weatherResult').innerHTML = '<div class="empty-state">定位中…</div>';
+  navigator.geolocation.getCurrentPosition(function(pos){
+    var lat = pos.coords.latitude, lon = pos.coords.longitude;
+    fetch('https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon + '&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=3')
+      .then(function(r){ return r.json(); })
+      .then(function(d){ document.getElementById('weatherCityLabel').textContent = '我的位置'; document.getElementById('weatherResult').innerHTML = renderWeatherCards(d); })
+      .catch(function(){ document.getElementById('weatherResult').innerHTML = '<div class="empty-state">定位查询失败</div>'; });
+  }, function(){ document.getElementById('weatherResult').innerHTML = '<div class="empty-state">定位被拒绝，可手动输入城市</div>'; });
+}
+function autoWeather() {
+  var city = loadJSON('growth_weathercity', '');
+  if (city) { document.getElementById('weatherCity').value = city; searchWeather(); }
+}
+
+function renderStockIndices() {
+  var html = stockIndicesData.map(function(ix, i){
+    var up = ix.change >= 0;
+    return '<div class="stat-card stock-card" onclick="editIndex('+i+')"><div class="stock-name">'+ix.name+'</div><div class="stock-value">'+ix.value.toFixed(2)+'</div><div class="stock-change '+(up?'up':'down')+'">'+(up?'▲':'▼')+Math.abs(ix.change).toFixed(2)+'%</div></div>';
+  }).join('');
+  document.getElementById('stockIndices').innerHTML = html;
+}
+function editIndex(i) {
+  var v = prompt('更新【'+stockIndicesData[i].name+'】指数点位：', stockIndicesData[i].value);
+  if (v === null) return;
+  var c = prompt('涨跌幅（%，正数表示上涨）：', stockIndicesData[i].change);
+  if (c === null) return;
+  stockIndicesData[i].value = parseFloat(v) || stockIndicesData[i].value;
+  stockIndicesData[i].change = parseFloat(c) || 0;
+  renderStockIndices();
+}
+function addHolding() {
+  var name = document.getElementById('stockName').value.trim();
+  var cost = parseFloat(document.getElementById('stockCost').value);
+  var price = parseFloat(document.getElementById('stockPrice').value);
+  var shares = parseFloat(document.getElementById('stockShares').value);
+  if (!name || !cost || !price || !shares) { alert('请填写完整（名称、成本价、现价、股数）'); return; }
+  holdings.unshift({ id:Date.now(), name:name, cost:cost, price:price, shares:shares });
+  saveJSON('growth_holdings', holdings.slice(0, 100));
+  ['stockName','stockCost','stockPrice','stockShares'].forEach(function(id){ document.getElementById(id).value = ''; });
+  renderStock();
+}
+function delHolding(id) { holdings = holdings.filter(function(x){ return x.id !== id; }); saveJSON('growth_holdings', holdings); renderStock(); }
+function renderStock() {
+  if (!document.getElementById('stockIndices')) return;
+  renderStockIndices();
+  var totalCost = 0, totalValue = 0;
+  holdings.forEach(function(h){ totalCost += h.cost * h.shares; totalValue += h.price * h.shares; });
+  var pnl = totalValue - totalCost; var rate = totalCost ? pnl / totalCost * 100 : 0;
+  document.getElementById('stockSummary').textContent = '总资产 ¥' + totalValue.toFixed(0) + ' · 总盈亏 ' + (pnl>=0?'+':'') + pnl.toFixed(0) + ' (' + (pnl>=0?'+':'') + rate.toFixed(2) + '%)';
+  document.getElementById('stockList').innerHTML = holdings.length ? holdings.map(function(h){
+    var mkt = h.price * h.shares, cst = h.cost * h.shares, p = mkt - cst, r = cst ? p / cst * 100 : 0; var up = p >= 0;
+    return '<div class="fin-item"><span class="fin-emoji">📊</span><div class="fin-info"><div class="fin-note">'+h.name+'</div><div class="fin-sub">成本 '+h.cost+' · 现价 '+h.price+' · '+h.shares+'股</div></div><span class="fin-amount '+(up?'inc':'exp')+'">'+(up?'+':'')+p.toFixed(0)+'</span><button class="fin-del" onclick="delHolding('+h.id+')">🗑</button></div>';
+  }).join('') : '<div class="empty-state">还没有持仓，添加你的第一支股票 📈</div>';
+  document.getElementById('stockNews').innerHTML = stockNewsData.map(function(n, i){
+    return '<div class="news-item" onclick="openDetail(\'stock\','+i+')"><span class="news-badge badge-tech">'+n.badge+'</span><div class="news-content"><div class="news-title">'+n.title+'</div><div class="news-meta">'+n.meta+'</div></div></div>';
+  }).join('');
+}
+
+// ===================== 渲染：成长 =====================
+function renderQuotes() { document.getElementById('dailyQuote').textContent = quotes[quoteIndex % quotes.length]; }
+function nextQuote() { quoteIndex = (quoteIndex + 1) % quotes.length; renderQuotes(); }
+
+function renderSidebarStats() {
+  var doneTask = tasks.filter(function(t){ return t.done; }).length;
+  var today = localDateKey();
+  var doneHabit = habits.filter(function(h){ return h.history.indexOf(today) >= 0; }).length;
+  document.getElementById('statTask').textContent = doneTask + '/' + tasks.length;
+  document.getElementById('statHabit').textContent = doneHabit + '/' + habits.length;
+  document.getElementById('statJournal').textContent = journals.length;
+}
+function renderHabits() {
+  var today = localDateKey(); var html = '';
+  habits.forEach(function(h) {
+    var done = h.history.indexOf(today) >= 0;
+    var streak = calcStreak(h.history);
+    html += '<div class="habit-row"><span class="habit-icon">' + h.icon + '</span><span class="habit-name">' + h.name + '</span>' +
+      '<span class="habit-streak">🔥' + streak + '天</span>' +
+      '<button class="habit-btn' + (done ? ' done' : '') + '" onclick="toggleHabit(' + h.id + ')">✓</button></div>';
+  });
+  document.getElementById('habitList').innerHTML = html;
+  renderSidebarStats();
+}
+function calcStreak(history) {
+  var set = {}; history.forEach(function(h){ set[h] = true; });
+  var streak = 0; var d = new Date();
+  if (!set[localDateKey(d)]) { d.setDate(d.getDate() - 1); if (!set[localDateKey(d)]) return 0; }
+  while (set[localDateKey(d)]) { streak++; d.setDate(d.getDate() - 1); }
+  return streak;
+}
+function toggleHabit(id) {
+  var h = habits.filter(function(x){ return x.id === id; })[0]; if (!h) return;
+  var today = localDateKey(); var idx = h.history.indexOf(today);
+  if (idx >= 0) h.history.splice(idx, 1); else h.history.push(today);
+  saveJSON('growth_habits', habits); renderHabits();
+}
+function renderTasks() {
+  var filtered = (currentTaskFilter === 'all') ? tasks : tasks.filter(function(t){ return t.cat === currentTaskFilter; });
+  filtered.sort(function(a, b){ var order = { high:0, mid:1, low:2 }; return order[a.pri] - order[b.pri]; });
+  var html = '';
+  filtered.forEach(function(t) {
+    var pri = priMap[t.pri];
+    html += '<li class="task-item"><div class="task-check' + (t.done ? ' done' : '') + '" onclick="toggleTask(' + t.id + ')">✓</div>' +
+      '<div class="task-body"><div class="task-text' + (t.done ? ' done' : '') + '" onclick="toggleTask(' + t.id + ')">' + t.text + '</div>' +
+      '<div class="task-meta"><span class="task-tag tag-' + t.cat + '">' + categoryMap[t.cat] + '</span><span class="task-pri ' + pri[1] + '">' + pri[0] + '</span></div></div>' +
+      '<button class="task-del" onclick="delTask(' + t.id + ')">🗑</button></li>';
+  });
+  document.getElementById('taskList').innerHTML = html || '<div class="empty-state">暂无任务，添加一个开始吧 ✨</div>';
+  updateTaskProgress();
+}
+function updateTaskProgress() {
+  var done = tasks.filter(function(t){ return t.done; }).length;
+  var pct = tasks.length ? Math.round(done / tasks.length * 100) : 0;
+  document.getElementById('taskProgress').style.width = pct + '%';
+  document.getElementById('taskProgressText').textContent = '完成 ' + done + ' / ' + tasks.length + '（' + pct + '%）';
+  renderSidebarStats();
+}
+function addTask() {
+  var input = document.getElementById('taskInput'); var text = input.value.trim();
+  if (!text) { alert('请输入任务内容'); return; }
+  tasks.push({ id:Date.now(), text:text, cat:document.getElementById('taskCat').value, pri:document.getElementById('taskPri').value, done:false });
+  saveJSON('growth_tasks', tasks); input.value = ''; renderTasks();
+  document.getElementById('statusBadge').textContent = '✅ 已添加任务'; setTimeout(function(){ document.getElementById('statusBadge').textContent = '✨ 今天也要成长'; }, 2000);
+}
+function toggleTask(id) { var t = tasks.filter(function(x){ return x.id === id; })[0]; if (t) { t.done = !t.done; saveJSON('growth_tasks', tasks); renderTasks(); } }
+function delTask(id) { tasks = tasks.filter(function(x){ return x.id !== id; }); saveJSON('growth_tasks', tasks); renderTasks(); }
+function filterTasks(cat) {
+  currentTaskFilter = cat;
+  document.querySelectorAll('#taskFilter .filter-chip').forEach(function(c){ c.classList.toggle('active', c.getAttribute('data-cat') === cat); });
+  renderTasks();
+}
+function renderWeek() {
+  var days = ['日','一','二','三','四','五','六']; var now = new Date(); var html = '';
+  var focusData = loadJSON('growth_week', {});
+  for (var i = 0; i < 7; i++) {
+    var d = new Date(now); d.setDate(now.getDate() - now.getDay() + i);
+    var key = localDateKey(d); var isToday = key === localDateKey();
+    html += '<div class="week-day' + (isToday ? ' today' : '') + '" onclick="setWeekFocus(\'' + key + '\')">' +
+      '<div class="week-name">周' + days[d.getDay()] + '</div><div class="week-num">' + (d.getMonth() + 1) + '/' + d.getDate() + '</div>' +
+      '<div class="week-focus">' + (focusData[key] || '') + '</div></div>';
+  }
+  document.getElementById('weekGrid').innerHTML = html;
+}
+function setWeekFocus(key) {
+  var focusData = loadJSON('growth_week', {}); var cur = focusData[key] || '';
+  var txt = prompt('设定这一天的焦点（一句话）：', cur);
+  if (txt !== null) { focusData[key] = txt.trim(); saveJSON('growth_week', focusData); renderWeek(); }
+}
+function pickMood(el) {
+  document.querySelectorAll('#moodRow .mood-item').forEach(function(m){ m.classList.remove('active'); });
+  el.classList.add('active'); currentMood = el.getAttribute('data-mood');
+}
+function saveJournal() {
+  var gains = document.getElementById('jGains').value.trim();
+  var gratitude = document.getElementById('jGratitude').value.trim();
+  var reflect = document.getElementById('jReflect').value.trim();
+  if (!gains && !gratitude && !reflect && !currentMood) { alert('请至少填写一项再保存'); return; }
+  var today = localDateKey();
+  var entry = { date: today, mood: currentMood, gains:gains, gratitude:gratitude, reflect:reflect };
+  var existing = journals.filter(function(j){ return j.date === today; })[0];
+  if (existing) { journals[journals.indexOf(existing)] = entry; } else { journals.unshift(entry); }
+  saveJSON('growth_journals', journals);
+  ['jGains','jGratitude','jReflect'].forEach(function(id){ document.getElementById(id).value = ''; });
+  document.querySelectorAll('#moodRow .mood-item').forEach(function(m){ m.classList.remove('active'); });
+  currentMood = ''; renderTimeline(); renderSidebarStats();
+  document.getElementById('statusBadge').textContent = '📝 今日记录已保存'; setTimeout(function(){ document.getElementById('statusBadge').textContent = '✨ 今天也要成长'; }, 2000);
+}
+function renderTimeline() {
+  var container = document.getElementById('journalTimeline');
+  if (journals.length === 0) { container.innerHTML = '<div class="empty-state">还没有成长记录，写下第一篇吧 ✍️</div>'; return; }
+  container.innerHTML = journals.slice(0, 30).map(function(j, i) {
+    var dot = i === 0 ? '📌' : '📅';
+    var html = '<div class="tl-item"><div class="tl-dot">' + dot + '</div><div class="tl-content"><div class="tl-date">' + j.date + (j.mood ? ' · ' + j.mood : '') + '</div>';
+    if (j.gains) html += '<div class="tl-row"><span class="tl-label">💡收获</span>' + j.gains + '</div>';
+    if (j.gratitude) html += '<div class="tl-row"><span class="tl-label">🙏感恩</span>' + j.gratitude + '</div>';
+    if (j.reflect) html += '<div class="tl-row"><span class="tl-label">🔍反思</span>' + j.reflect + '</div>';
+    return html + '</div></div>';
+  }).join('');
+}
+function exportJournals() {
+  if (journals.length === 0) { alert('暂无日志可导出'); return; }
+  var csv = '日期,心情,收获,感恩,反思\n';
+  journals.forEach(function(j){ csv += '"' + j.date + '","' + (j.mood||'') + '","' + (j.gains||'') + '","' + (j.gratitude||'') + '","' + (j.reflect||'') + '"\n'; });
+  var blob = new Blob(['﻿' + csv], { type:'text/csv;charset=utf-8;' }); var url = URL.createObjectURL(blob);
+  var a = document.createElement('a'); a.href = url; a.download = '成长日志_' + localDateKey() + '.csv'; a.click(); URL.revokeObjectURL(url);
+}
+function renderCognition() {
+  var idx = dayOfYear() % cognitionData.length; currentCogIndex = idx; var c = cognitionData[idx];
+  document.getElementById('cogHeroCat').textContent = c.category;
+  document.getElementById('cogHeroTitle').textContent = c.title;
+  document.getElementById('cogHeroQuote').textContent = '“' + c.quote + '”';
+  document.getElementById('cogDate').textContent = '第 ' + (idx + 1) + ' / ' + cognitionData.length + ' 条';
+  var html = '';
+  cognitionData.forEach(function(c, i) {
+    var fav = favSet.indexOf(c.title) >= 0;
+    html += '<div class="cog-card' + (fav ? ' fav' : '') + '" onclick="openDetail(\'cognition\',' + i + ')">' +
+      (fav ? '<span class="cc-star">⭐</span>' : '') +
+      '<div class="cc-cat">' + c.category + '</div><div class="cc-title">' + c.title + '</div><div class="cc-desc">' + c.quote + '</div></div>';
+  });
+  document.getElementById('cogList').innerHTML = html;
+}
+function renderGoals() {
+  var html = '';
+  goals.forEach(function(g) {
+    var stepsHtml = (g.steps || []).map(function(s, i){
+      return '<li class="goal-step' + (s.done ? ' done' : '') + '" onclick="toggleStep(' + g.id + ',' + i + ')"><span class="gs-check' + (s.done ? ' done' : '') + '">✓</span><span>' + s.text + '</span></li>';
+    }).join('');
+    html += '<div class="goal-card"><div class="goal-head"><span class="goal-title">' + g.title + '</span><span class="goal-pct">' + g.progress + '%</span>' +
+      '<button class="goal-del" onclick="delGoal(' + g.id + ')">🗑</button></div>' +
+      '<div class="progress-bar-bg"><div class="progress-bar-fill" style="width:' + g.progress + '%"></div></div><ul class="goal-steps">' + stepsHtml + '</ul></div>';
+  });
+  document.getElementById('goalList').innerHTML = html || '<div class="empty-state">还没有目标，添加一个开始追逐吧 🎯</div>';
+}
+function addGoal() {
+  var input = document.getElementById('goalInput'); var text = input.value.trim();
+  if (!text) { alert('请输入目标内容'); return; }
+  goals.push({ id:Date.now(), title:text, progress:0, steps:[] }); saveJSON('growth_goals', goals); input.value = ''; renderGoals();
+}
+function toggleStep(goalId, stepIdx) {
+  var g = goals.filter(function(x){ return x.id === goalId; })[0]; if (!g || !g.steps[stepIdx]) return;
+  g.steps[stepIdx].done = !g.steps[stepIdx].done;
+  var done = g.steps.filter(function(s){ return s.done; }).length;
+  g.progress = g.steps.length ? Math.round(done / g.steps.length * 100) : g.progress;
+  saveJSON('growth_goals', goals); renderGoals();
+}
+function delGoal(id) { goals = goals.filter(function(x){ return x.id !== id; }); saveJSON('growth_goals', goals); renderGoals(); }
+function renderHabitStats() {
+  var html = ''; var days = [];
+  for (var i = 6; i >= 0; i--) { var d = new Date(); d.setDate(d.getDate() - i); days.push(localDateKey(d)); }
+  habits.forEach(function(h) {
+    var streak = calcStreak(h.history);
+    var dots = days.map(function(day){ var done = h.history.indexOf(day) >= 0; return '<div class="day-dot' + (done ? ' done' : '') + '">' + day.slice(5) + '</div>'; }).join('');
+    html += '<div class="habit-stat"><div class="habit-stat-head"><span class="habit-icon">' + h.icon + '</span><span class="habit-stat-name">' + h.name + '</span>' +
+      '<span class="habit-stat-streak">🔥 连续 ' + streak + ' 天</span></div><div class="week-dots">' + dots + '</div></div>';
+  });
+  document.getElementById('habitStats').innerHTML = html;
+}
+function addHabit() {
+  var name = prompt('新习惯名称：', ''); if (!name) return;
+  var icon = prompt('图标 emoji（可选）：', '⭐') || '⭐';
+  habits.push({ id:Date.now(), name:name.trim(), icon:icon, history:[] }); saveJSON('growth_habits', habits); renderHabits(); renderHabitStats();
+}
+
+// ===================== 渲染：娱乐创作 =====================
+function renderHotTopics(filter) {
+  filter = filter || 'all'; var html = '';
+  hotTopics.forEach(function(t, i) {
+    if (filter !== 'all' && t.type !== filter) return;
+    var rankClass = t.rank <= 3 ? ' top' + t.rank : '';
+    html += '<div class="hot-item" onclick="openDetail(\'hot\',' + i + ')"><span class="hot-rank' + rankClass + '">' + t.rank + '</span>' +
+      '<div class="hot-info"><div class="hot-title">' + t.title + '</div><div class="hot-desc">' + t.desc + '</div></div><span class="hot-heat">' + t.heat + '</span></div>';
+  });
+  document.getElementById('hotTopics').innerHTML = html;
+}
+function renderLiveInspiration() {
+  var html = '';
+  liveInspiration.forEach(function(item, i) {
+    html += '<div class="live-card" onclick="openDetail(\'live\',' + i + ')"><div class="live-emoji">' + item.emoji + '</div><div class="live-title">' + item.title + '</div><div class="live-desc">' + item.desc + '</div></div>';
+  });
+  document.getElementById('liveInspiration').innerHTML = html;
+}
+function renderNews() {
+  var html = '';
+  newsData.forEach(function(n, i) {
+    html += '<div class="news-item" onclick="openDetail(\'news\',' + i + ')"><span class="news-badge badge-' + n.cls + '">' + n.badge + '</span>' +
+      '<div class="news-content"><div class="news-title">' + n.title + '</div><div class="news-meta">' + n.meta + '</div></div></div>';
+  });
+  document.getElementById('newsFeed').innerHTML = html;
+}
+function filterHot(type) {
+  document.querySelectorAll('#tab-douyin .tabs .tab-btn').forEach(function(btn, i) {
+    var types = ['all','entertainment','social','tech','life']; btn.classList.toggle('active', types[i] === type);
+  });
+  renderHotTopics(type);
+}
+function copyPrompt(el) {
+  var text = el.textContent; var o = text;
+  if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(text).then(function(){ el.textContent = '✅ 已复制!'; setTimeout(function(){ el.textContent = o; }, 1500); }); }
+  else { el.textContent = '✅ 已复制!'; setTimeout(function(){ el.textContent = o; }, 1500); }
+}
+function generateIdea(type) {
+  var ideas = { '娱乐':'结合敖子逸仙侠新剧，做互动直播...', '情感':'台风天居家场景，聊陪伴感...', '搞笑':'模仿歌手2026名场面，发起翻车大赛...', '知识':'解读抖音AI内容新规，帮中小主播避坑...' };
+  alert('🎯 创意生成：\n\n' + (ideas[type] || '正在生成...'));
+}
+function getAISuggestion() {
+  suggestionIndex = (suggestionIndex + 1) % aiSuggestions.length;
+  var s = aiSuggestions[suggestionIndex];
+  var lis = s.content.map(function(c){ return '<li style="margin-bottom:4px;">' + c + '</li>'; }).join('');
+  document.getElementById('aiSuggestion').innerHTML = '<p>📌 <strong style="color:#ffa043;">' + s.title + '：</strong></p><ul style="margin-top:8px; padding-left:20px;">' + lis + '</ul>';
+}
+function saveReview() {
+  var g1 = document.getElementById('reviewGood1').value.trim(), g2 = document.getElementById('reviewGood2').value.trim(), g3 = document.getElementById('reviewGood3').value.trim();
+  var b1 = document.getElementById('reviewBad1').value.trim(), b2 = document.getElementById('reviewBad2').value.trim(), plan = document.getElementById('reviewPlan').value.trim();
+  if (!g1 && !g2 && !b1 && !plan) { alert('请至少填写一项复盘内容'); return; }
+  var entry = { date: new Date().toLocaleString('zh-CN'), good:[g1,g2,g3].filter(Boolean), bad:[b1,b2].filter(Boolean), plan:plan };
+  reviewHistory.unshift(entry); saveJSON('growth_review', reviewHistory.slice(0,50)); renderReviewHistory();
+  ['reviewGood1','reviewGood2','reviewGood3','reviewBad1','reviewBad2','reviewPlan'].forEach(function(id){ document.getElementById(id).value = ''; });
+  document.getElementById('statusBadge').textContent = '📝 复盘已保存'; setTimeout(function(){ document.getElementById('statusBadge').textContent = '✨ 今天也要成长'; }, 2000);
+}
+function renderReviewHistory() {
+  var container = document.getElementById('reviewHistory');
+  if (reviewHistory.length === 0) { container.innerHTML = '<div class="empty-state">暂无复盘记录，开始记录你的第一次复盘吧 ✨</div>'; return; }
+  container.innerHTML = reviewHistory.slice(0, 20).map(function(entry) {
+    var html = '<div class="history-item"><div class="history-date">🗓️ ' + entry.date + '</div>';
+    if (entry.good.length) html += '<div style="color:#00b894; margin-bottom:4px;">✅ ' + entry.good.join(' · ') + '</div>';
+    if (entry.bad.length) html += '<div style="color:#fd79a8; margin-bottom:4px;">❌ ' + entry.bad.join(' · ') + '</div>';
+    if (entry.plan) html += '<div style="color:#ffa043;">📌 ' + entry.plan + '</div>';
+    return html + '</div>';
+  }).join('');
+}
+function exportReview() {
+  if (reviewHistory.length === 0) { alert('暂无复盘记录可导出'); return; }
+  var csv = '日期,亮点,待优化,改进计划\n';
+  reviewHistory.forEach(function(e){ csv += '"' + e.date + '","' + e.good.join('; ') + '","' + e.bad.join('; ') + '","' + e.plan + '"\n'; });
+  var blob = new Blob(['﻿' + csv], { type:'text/csv;charset=utf-8;' }); var url = URL.createObjectURL(blob);
+  var a = document.createElement('a'); a.href = url; a.download = '内容复盘_' + localDateKey() + '.csv'; a.click(); URL.revokeObjectURL(url);
+}
+function clearReview() {
+  if (confirm('确定清空所有复盘历史记录？')) { reviewHistory.length = 0; saveJSON('growth_review', reviewHistory); renderReviewHistory(); }
+}
+function initSuggestion() {
+  var s = aiSuggestions[0];
+  var lis = s.content.map(function(c){ return '<li style="margin-bottom:4px;">' + c + '</li>'; }).join('');
+  document.getElementById('aiSuggestion').innerHTML = '<p>📌 <strong style="color:#ffa043;">' + s.title + '：</strong></p><ul style="margin-top:8px; padding-left:20px;">' + lis + '</ul>';
+}
+
+// ===================== 详情弹窗（统一） =====================
+function openDetail(type, index) {
+  var item, tags = [], keyword, angleLabel = '💡 应用建议', favKey;
+  if (type === 'hot') { item = hotTopics[index]; tags = ['抖音热搜 NO.' + item.rank, item.heat]; keyword = item.keyword || item.title; favKey = item.title; }
+  else if (type === 'live') { item = liveInspiration[index]; tags = ['直播灵感']; keyword = item.keyword || item.title; favKey = item.title; }
+  else if (type === 'news') { item = newsData[index]; tags = [item.badge]; keyword = item.keyword || item.title; favKey = item.title; }
+  else if (type === 'cognition') { item = cognitionData[index]; tags = [item.category]; keyword = item.keyword || item.title; angleLabel = '💡 如何在成长中应用'; favKey = item.title; }
+  else if (type === 'stock') { item = stockNewsData[index]; tags = [item.badge]; keyword = item.keyword || item.title; favKey = item.title; }
+  currentFavKey = favKey; currentCogIndex = (type === 'cognition') ? index : currentCogIndex;
+  document.getElementById('modalTitle').textContent = item.title;
+  document.getElementById('modalTags').innerHTML = tags.map(function(t){ return '<span class="modal-tag">' + t + '</span>'; }).join('');
+  document.getElementById('modalDetail').textContent = item.detail || '';
+  document.getElementById('modalAngleLabel').textContent = angleLabel;
+  document.getElementById('modalAngles').innerHTML = (item.angles || item.application || []).map(function(a){ return '<li>' + a + '</li>'; }).join('');
+  document.getElementById('modalDouyin').href = 'https://www.douyin.com/search/' + encodeURIComponent(keyword);
+  document.getElementById('modalBaidu').href = 'https://www.baidu.com/s?wd=' + encodeURIComponent(keyword);
+  updateFavBtn(); document.getElementById('detailModal').classList.add('show');
+}
+function updateFavBtn() {
+  var btn = document.getElementById('modalFav');
+  if (favSet.indexOf(currentFavKey) >= 0) { btn.classList.add('done'); btn.textContent = '⭐ 已收藏'; }
+  else { btn.classList.remove('done'); btn.textContent = '⭐ 收藏'; }
+}
+function toggleFav() {
+  var idx = favSet.indexOf(currentFavKey);
+  if (idx >= 0) favSet.splice(idx, 1); else favSet.push(currentFavKey);
+  saveJSON('growth_fav', favSet); updateFavBtn(); renderCognition();
+}
+function closeDetail() { document.getElementById('detailModal').classList.remove('show'); }
+document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeDetail(); });
+
+// ===================== 通用 =====================
+function switchTab(name) {
+  var map = { plan:'tab-plan', journal:'tab-journal', cognition:'tab-cognition', goals:'tab-goals', douyin:'tab-douyin', news:'tab-news', review:'tab-review', finance:'tab-finance', stock:'tab-stock', schedule:'tab-schedule', weather:'tab-weather' };
+  document.querySelectorAll('#mainTabs .tab-btn').forEach(function(btn){ btn.classList.toggle('active', btn.getAttribute('data-tab') === name); });
+  document.querySelectorAll('.tab-content').forEach(function(el){ el.classList.remove('active'); });
+  document.getElementById(map[name]).classList.add('active');
+  if (name === 'goals') renderHabitStats();
+}
+function refreshAll() {
+  document.getElementById('statusBadge').textContent = '🔄 刷新中...';
+  setTimeout(function(){
+    renderQuotes(); renderHabits(); renderTasks(); renderWeek(); renderTimeline(); renderCognition(); renderGoals();
+    renderHotTopics(); renderLiveInspiration(); renderNews(); renderReviewHistory(); initSuggestion(); renderFinance(); renderStock(); renderSchedule();
+    document.getElementById('statusBadge').textContent = '✅ 已刷新';
+    setTimeout(function(){ document.getElementById('statusBadge').textContent = '✨ 今天也要成长'; }, 2000);
+  }, 600);
+}
+
+// ===================== 初始化 =====================
+window.addEventListener('DOMContentLoaded', function() {
+  var now = new Date();
+  document.getElementById('currentDate').textContent = now.toLocaleDateString('zh-CN', { year:'numeric', month:'long', day:'numeric', weekday:'long' });
+  document.getElementById('journalDate').textContent = localDateKey();
+  var mainBtns = document.querySelectorAll('#mainTabs .tab-btn');
+  var keys = ['plan','journal','cognition','goals','douyin','news','review','finance','stock','schedule','weather'];
+  mainBtns.forEach(function(btn, i){ btn.setAttribute('data-tab', keys[i]); });
+
+  renderQuotes(); renderHabits(); renderTasks(); renderWeek(); renderTimeline(); renderCognition(); renderGoals();
+  renderHotTopics(); renderLiveInspiration(); renderNews(); renderReviewHistory(); initSuggestion();
+  if (document.getElementById('finDate')) { document.getElementById('finDate').value = localDateKey(); renderFinanceCategories(); renderFinance(); }
+  renderStock();
+  renderSchedule();
+  autoWeather();
+});
+
+// ===================== 跨设备同步（二维码传输） =====================
+// 使用 qrcode.js 库生成二维码，jsQR 库扫描
+
+function toggleSyncPanel() {
+  var panel = document.getElementById('syncPanel');
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+  cancelSync();
+}
+
+function cancelSync() {
+  document.getElementById('syncStep1').style.display = 'block';
+  document.getElementById('syncStepGist').style.display = 'none';
+  document.getElementById('syncStep2QR').style.display = 'none';
+  document.getElementById('syncStep2Scan').style.display = 'none';
+  document.getElementById('syncStepImport').style.display = 'none';
+  document.getElementById('qrcodeContainer').innerHTML = '';
+  var video = document.getElementById('scanVideo');
+  if (video && video.srcObject) {
+    video.srcObject.getTracks().forEach(function(t) { t.stop(); });
+    video.srcObject = null;
+  }
+}
+
+// ===================== GitHub Gist 云端同步 =====================
+var GIST_ID = localStorage.getItem('haoran_gist_id');
+
+function getGitHubToken() {
+  return localStorage.getItem('haoran_github_token');
+}
+
+function setGitHubToken(token) {
+  localStorage.setItem('haoran_github_token', token);
+}
+
+function getAllData() {
+  return {
+    tasks: loadJSON('growth_tasks', []),
+    habits: loadJSON('growth_habits', {}),
+    journal: loadJSON('growth_journal', []),
+    goals: loadJSON('growth_goals', []),
+    fav: loadJSON('growth_fav', []),
+    finance: loadJSON('growth_finance', { transactions: [] }),
+    schedule: loadJSON('growth_schedule', { goals: [], monthly: [] }),
+    timestamp: Date.now(),
+    version: '1.0',
+    app: 'haoran-workbench'
+  };
+}
+
+function saveAllData(data) {
+  saveJSON('growth_tasks', data.tasks || []);
+  saveJSON('growth_habits', data.habits || {});
+  saveJSON('growth_journal', data.journal || []);
+  saveJSON('growth_goals', data.goals || []);
+  saveJSON('growth_fav', data.fav || []);
+  saveJSON('growth_finance', data.finance || { transactions: [] });
+  saveJSON('growth_schedule', data.schedule || { goals: [], monthly: [] });
+}
+
+function showGistPanel() {
+  document.getElementById('syncStep1').style.display = 'none';
+  document.getElementById('syncStepGist').style.display = 'block';
+  
+  // 如果已保存 token，填入输入框
+  var savedToken = getGitHubToken();
+  if (savedToken) {
+    document.getElementById('githubToken').value = savedToken;
+  }
+  
+  if (GIST_ID) {
+    document.getElementById('gistStatus').textContent = '已有云端备份，可上传或下载';
+  } else {
+    document.getElementById('gistStatus').textContent = '首次使用请先上传';
+  }
+}
+
+function uploadToGist() {
+  var token = document.getElementById('githubToken').value.trim();
+  if (!token) {
+    document.getElementById('gistStatus').textContent = '❌ 请先输入 GitHub Token';
+    return;
+  }
+  
+  // 保存 token 到本地
+  setGitHubToken(token);
+  
+  document.getElementById('gistStatus').textContent = '正在上传...';
+  
+  var data = getAllData();
+  var content = JSON.stringify(data, null, 2);
+  
+  var url = GIST_ID 
+    ? 'https://api.github.com/gists/' + GIST_ID
+    : 'https://api.github.com/gists';
+  
+  var method = GIST_ID ? 'PATCH' : 'POST';
+  
+  fetch(url, {
+    method: method,
+    headers: {
+      'Authorization': 'token ' + token,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      description: '浩然工作台数据备份',
+      public: false,
+      files: {
+        'haoran-workbench-data.json': {
+          content: content
+        }
+      }
+    })
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(result) {
+    if (result.id) {
+      GIST_ID = result.id;
+      localStorage.setItem('haoran_gist_id', GIST_ID);
+      var time = new Date().toLocaleString();
+      document.getElementById('gistStatus').innerHTML = '✅ 上传成功！<br>时间：' + time + '<br>任务：' + (data.tasks ? data.tasks.length : 0) + ' 条';
+    } else {
+      document.getElementById('gistStatus').textContent = '❌ 上传失败：' + (result.message || '未知错误');
+    }
+  })
+  .catch(function(err) {
+    document.getElementById('gistStatus').textContent = '❌ 网络错误：' + err.message;
+  });
+}
+
+function downloadFromGist() {
+  document.getElementById('syncStep1').style.display = 'none';
+  document.getElementById('syncStepGist').style.display = 'block';
+  
+  if (!GIST_ID) {
+    document.getElementById('gistStatus').textContent = '❌ 还没有云端数据，请先上传一次';
+    return;
+  }
+  
+  document.getElementById('gistStatus').textContent = '正在下载...';
+  
+  fetch('https://api.github.com/gists/' + GIST_ID, {
+    headers: {
+      'Authorization': 'token ' + GITHUB_TOKEN
+    }
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(result) {
+    if (result.files && result.files['haoran-workbench-data.json']) {
+      var content = result.files['haoran-workbench-data.json'].content;
+      var data = JSON.parse(content);
+      
+      if (data.app !== 'haoran-workbench') {
+        document.getElementById('gistStatus').textContent = '❌ 数据格式不正确';
+        return;
+      }
+      
+      saveAllData(data);
+      
+      var time = new Date(data.timestamp).toLocaleString();
+      document.getElementById('gistStatus').innerHTML = '✅ 下载成功！<br>备份时间：' + time + '<br>任务：' + (data.tasks ? data.tasks.length : 0) + ' 条<br>页面即将刷新...';
+      
+      setTimeout(function() { location.reload(); }, 2000);
+    } else {
+      document.getElementById('gistStatus').textContent = '❌ 没有找到数据文件';
+    }
+  })
+  .catch(function(err) {
+    document.getElementById('gistStatus').textContent = '❌ 网络错误：' + err.message;
+  });
+}
+
+// ===================== 文件导出/导入同步 =====================
+function exportDataFile() {
+  var allData = {
+    tasks: loadJSON('growth_tasks', []),
+    habits: loadJSON('growth_habits', {}),
+    journal: loadJSON('growth_journal', []),
+    goals: loadJSON('growth_goals', []),
+    fav: loadJSON('growth_fav', []),
+    finance: loadJSON('growth_finance', { transactions: [] }),
+    schedule: loadJSON('growth_schedule', { goals: [], monthly: [] }),
+    timestamp: Date.now(),
+    version: '1.0',
+    app: 'haoran-workbench'
+  };
+  
+  var dataStr = JSON.stringify(allData, null, 2);
+  var blob = new Blob([dataStr], { type: 'application/json' });
+  var url = URL.createObjectURL(blob);
+  
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'haoran-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  
+  alert('✅ 数据已导出！\n文件保存为：' + a.download + '\n\n请通过微信/QQ/邮件发送到手机，然后在手机端导入。');
+}
+
+function showImportPanel() {
+  document.getElementById('syncStep1').style.display = 'none';
+  document.getElementById('syncStepImport').style.display = 'block';
+  document.getElementById('importStatus').textContent = '';
+}
+
+function importDataFile(input) {
+  var file = input.files[0];
+  if (!file) return;
+  
+  document.getElementById('importStatus').textContent = '正在读取文件...';
+  
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      var data = JSON.parse(e.target.result);
+      
+      // 验证数据格式
+      if (!data.app || data.app !== 'haoran-workbench') {
+        document.getElementById('importStatus').textContent = '❌ 无效的数据文件';
+        return;
+      }
+      
+      // 保存数据
+      saveJSON('growth_tasks', data.tasks || []);
+      saveJSON('growth_habits', data.habits || {});
+      saveJSON('growth_journal', data.journal || []);
+      saveJSON('growth_goals', data.goals || []);
+      saveJSON('growth_fav', data.fav || []);
+      saveJSON('growth_finance', data.finance || { transactions: [] });
+      saveJSON('growth_schedule', data.schedule || { goals: [], monthly: [] });
+      
+      var summary = '任务:' + (data.tasks ? data.tasks.length : 0) + ' 日志:' + (data.journal ? data.journal.length : 0);
+      document.getElementById('importStatus').textContent = '✅ 导入成功！' + summary;
+      
+      setTimeout(function() {
+        alert('✅ 数据导入成功！\n' + summary + '\n\n页面即将刷新。');
+        location.reload();
+      }, 500);
+      
+    } catch(err) {
+      document.getElementById('importStatus').textContent = '❌ 解析失败: ' + err.message;
+    }
+  };
+  reader.readAsText(file);
+}
+
+// 数据编码：处理中文的 Base64（兼容二维码传输）
+function compressData(data) {
+  // 将 JSON 转为字符串，然后用 encodeURIComponent 处理中文，最后 base64
+  var json = JSON.stringify(data);
+  return btoa(encodeURIComponent(json));
+}
+
+function decompressData(base64) {
+  try {
+    // 先 base64 解码，再 URL 解码，最后 JSON 解析
+    var decoded = atob(base64);
+    return JSON.parse(decodeURIComponent(decoded));
+  } catch(e) {
+    console.error('Decode error:', e);
+    alert('二维码数据解析失败: ' + e.message);
+    return null;
+  }
+}
+
+function generateQRCode() {
+  console.log('generateQRCode called');
+  var allData = {
+    tasks: loadJSON('growth_tasks', []),
+    habits: loadJSON('growth_habits', {}),
+    journal: loadJSON('growth_journal', []),
+    goals: loadJSON('growth_goals', []),
+    fav: loadJSON('growth_fav', []),
+    finance: loadJSON('growth_finance', { transactions: [] }),
+    schedule: loadJSON('growth_schedule', { goals: [], monthly: [] }),
+    timestamp: Date.now(),
+    version: '1.0'
+  };
+  
+  // 显示数据摘要
+  var summary = '任务:' + allData.tasks.length + ' 日志:' + allData.journal.length + ' 目标:' + allData.goals.length;
+  console.log('Data summary:', summary);
+  
+  var compressed = compressData(allData);
+  console.log('Compressed length:', compressed.length);
+  
+  // 检查数据大小，如果太大提示用户
+  if (compressed.length > 2000) {
+    if (!confirm('数据量较大（' + compressed.length + ' 字符），生成的二维码可能较难扫描。建议先导出重要数据，或分多次同步。是否继续？')) {
+      return;
+    }
+  }
+  
+  document.getElementById('syncStep1').style.display = 'none';
+  document.getElementById('syncStep2QR').style.display = 'block';
+  document.getElementById('syncStatusQR').textContent = '生成中... (' + summary + ')';
+  
+  // 直接使用 Google Chart API，不依赖 CDN
+  generateQRCodeFallback('GROWTH:' + compressed);
+}
+
+function startScan() {
+  document.getElementById('syncStep1').style.display = 'none';
+  document.getElementById('syncStep2Scan').style.display = 'block';
+  document.getElementById('scanStatus').textContent = '正在请求相机权限...';
+  
+  // 动态加载 jsQR
+  loadScript('https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js', function() {
+    initScanner();
+  });
+}
+
+function initScanner() {
+  var video = document.getElementById('scanVideo');
+  
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+    .then(function(stream) {
+      video.srcObject = stream;
+      video.play();
+      document.getElementById('scanStatus').textContent = '请将二维码对准框内';
+      scanFrame();
+    })
+    .catch(function(err) {
+      document.getElementById('scanStatus').textContent = '无法访问相机: ' + err.message;
+    });
+}
+
+function scanFrame() {
+  var video = document.getElementById('scanVideo');
+  if (!video || !video.srcObject) return;
+  
+  var canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth || 640;
+  canvas.height = video.videoHeight || 480;
+  var ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  
+  var imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  var code = jsQR(imageData.data, imageData.width, imageData.height);
+  
+  if (code && code.data) {
+    console.log('QR Code detected:', code.data.substring(0, 50) + '...');
+    
+    if (!code.data.startsWith('GROWTH:')) {
+      document.getElementById('scanStatus').textContent = '识别到二维码，但不是本应用的数据格式';
+      requestAnimationFrame(scanFrame);
+      return;
+    }
+    
+    // 停止扫描
+    video.srcObject.getTracks().forEach(function(t) { t.stop(); });
+    video.srcObject = null;
+    
+    document.getElementById('scanStatus').textContent = '正在解析数据...';
+    
+    var base64 = code.data.substring(7);
+    console.log('Base64 length:', base64.length);
+    
+    var data = decompressData(base64);
+    console.log('Decompressed data:', data);
+    
+    if (data) {
+      // 保存数据
+      saveJSON('growth_tasks', data.tasks || []);
+      saveJSON('growth_habits', data.habits || {});
+      saveJSON('growth_journal', data.journal || []);
+      saveJSON('growth_goals', data.goals || []);
+      saveJSON('growth_fav', data.fav || []);
+      saveJSON('growth_finance', data.finance || { transactions: [] });
+      saveJSON('growth_schedule', data.schedule || { goals: [], monthly: [] });
+      
+      // 验证保存是否成功
+      var verifyTasks = loadJSON('growth_tasks', []);
+      console.log('Verified tasks count:', verifyTasks.length);
+      
+      document.getElementById('scanStatus').textContent = '✅ 数据同步成功！任务:' + (data.tasks ? data.tasks.length : 0) + '条，即将刷新...';
+      setTimeout(function() { location.reload(); }, 2000);
+    } else {
+      document.getElementById('scanStatus').textContent = '❌ 数据解析失败，请重试';
+    }
+  } else {
+    requestAnimationFrame(scanFrame);
+  }
+}
+
+function loadScript(url, onSuccess, onError) {
+  if (document.querySelector('script[src="' + url + '"]')) {
+    if (onSuccess) onSuccess();
+    return;
+  }
+  var script = document.createElement('script');
+  script.src = url;
+  script.onload = onSuccess;
+  script.onerror = function() {
+    if (onError) onError();
+    else alert('加载失败，请检查网络');
+  };
+  document.head.appendChild(script);
+}
+
+// 使用 Google Chart API 生成二维码（主要方案）
+function generateQRCodeFallback(text) {
+  console.log('generateQRCodeFallback called, text length:', text.length);
+  var container = document.getElementById('qrcodeContainer');
+  container.innerHTML = '';
+  
+  // 如果数据太大，截断并提示
+  var displayText = text;
+  if (text.length > 1500) {
+    displayText = text.substring(0, 1500);
+    document.getElementById('syncStatusQR').textContent = '警告：数据量过大，已截断。建议减少同步内容。';
+  }
+  
+  var img = document.createElement('img');
+  img.src = 'https://quickchart.io/chart?cht=qr&chs=300x300&chld=M&chl=' + encodeURIComponent(displayText);
+  img.style.width = '240px';
+  img.style.height = '240px';
+  img.style.display = 'block';
+  img.onload = function() {
+    document.getElementById('syncStatusQR').textContent = '✅ 二维码已生成，请用手机扫描';
+  };
+  img.onerror = function() {
+    // 尝试另一个 API
+    var img2 = document.createElement('img');
+    img2.src = 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=' + encodeURIComponent(displayText);
+    img2.style.width = '240px';
+    img2.style.height = '240px';
+    img2.onload = function() {
+      document.getElementById('syncStatusQR').textContent = '✅ 二维码已生成（备用API），请用手机扫描';
+    };
+    img2.onerror = function() {
+      container.innerHTML = '<div style="padding:20px;background:#ff6b6b;color:#fff;border-radius:8px;">二维码生成失败，请检查网络连接</div>';
+      document.getElementById('syncStatusQR').textContent = '生成失败，请重试';
+    };
+    container.appendChild(img2);
+  };
+  container.appendChild(img);
+}
+</script>
+</body>
+</html>
