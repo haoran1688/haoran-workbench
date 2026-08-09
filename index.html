@@ -1230,21 +1230,80 @@ function renderWeatherCards(d) {
   }
   return html + '</div>';
 }
+// 内置中国城市坐标兜底：Open-Meteo 对部分中文城市名（如曲靖）无索引，故本地优先匹配
+var CN_CITIES = {
+  '北京':[39.90,116.40,'北京'], '上海':[31.23,121.47,'上海'], '天津':[39.13,117.20,'天津'], '重庆':[29.56,106.55,'重庆'],
+  '石家庄':[38.04,114.51,'河北'], '太原':[37.87,112.55,'山西'], '呼和浩特':[40.84,111.75,'内蒙古'],
+  '沈阳':[41.80,123.43,'辽宁'], '大连':[38.91,121.61,'辽宁'], '长春':[43.90,125.32,'吉林'], '哈尔滨':[45.80,126.53,'黑龙江'],
+  '南京':[32.06,118.80,'江苏'], '苏州':[31.30,120.62,'江苏'], '无锡':[31.49,120.31,'江苏'], '常州':[31.81,119.97,'江苏'],
+  '南通':[31.98,120.89,'江苏'], '徐州':[34.26,117.18,'江苏'], '扬州':[32.39,119.41,'江苏'], '镇江':[32.20,119.45,'江苏'],
+  '盐城':[33.39,120.16,'江苏'], '泰州':[32.46,119.92,'江苏'], '淮安':[33.50,119.02,'江苏'], '连云港':[34.60,119.16,'江苏'],
+  '杭州':[30.27,120.15,'浙江'], '宁波':[29.87,121.55,'浙江'], '温州':[27.99,120.70,'浙江'], '嘉兴':[30.75,120.75,'浙江'],
+  '金华':[29.08,119.65,'浙江'], '台州':[28.66,121.43,'浙江'], '绍兴':[30.00,120.58,'浙江'],
+  '合肥':[31.86,117.28,'安徽'], '芜湖':[31.33,118.38,'安徽'], '蚌埠':[32.92,117.39,'安徽'], '阜阳':[32.90,115.81,'安徽'], '黄山':[29.72,118.34,'安徽'],
+  '福州':[26.07,119.30,'福建'], '厦门':[24.48,118.09,'福建'], '泉州':[24.87,118.68,'福建'], '漳州':[24.51,117.66,'福建'],
+  '莆田':[25.43,119.01,'福建'], '龙岩':[25.08,117.02,'福建'], '宁德':[26.67,119.55,'福建'],
+  '南昌':[28.68,115.86,'江西'], '赣州':[25.83,114.94,'江西'], '九江':[29.71,116.00,'江西'], '上饶':[28.45,117.97,'江西'], '景德镇':[29.27,117.18,'江西'],
+  '济南':[36.65,117.12,'山东'], '青岛':[36.07,120.38,'山东'], '烟台':[37.54,121.39,'山东'], '潍坊':[36.71,119.16,'山东'], '临沂':[35.10,118.35,'山东'], '济宁':[35.41,116.59,'山东'],
+  '郑州':[34.76,113.65,'河南'], '洛阳':[34.62,112.45,'河南'], '开封':[34.80,114.31,'河南'], '南阳':[32.99,112.53,'河南'], '新乡':[35.30,113.93,'河南'],
+  '武汉':[30.59,114.31,'湖北'], '宜昌':[30.69,111.29,'湖北'], '荆州':[30.35,112.24,'湖北'], '襄阳':[32.01,112.14,'湖北'], '黄石':[30.20,115.04,'湖北'], '十堰':[32.63,110.79,'湖北'],
+  '长沙':[28.23,112.94,'湖南'], '株洲':[27.83,113.13,'湖南'], '岳阳':[29.36,113.13,'湖南'], '常德':[29.03,111.70,'湖南'], '衡阳':[26.89,112.61,'湖南'], '湘潭':[27.83,112.94,'湖南'], '张家界':[29.12,110.48,'湖南'],
+  '广州':[23.13,113.27,'广东'], '深圳':[22.54,114.06,'广东'], '珠海':[22.27,113.58,'广东'], '东莞':[23.02,113.75,'广东'], '佛山':[23.02,113.12,'广东'], '中山':[22.52,113.38,'广东'],
+  '惠州':[23.11,114.42,'广东'], '江门':[22.58,113.08,'广东'], '汕头':[23.35,116.68,'广东'], '湛江':[21.27,110.36,'广东'], '韶关':[24.81,113.60,'广东'], '茂名':[21.66,110.93,'广东'],
+  '南宁':[22.82,108.32,'广西'], '桂林':[25.27,110.29,'广西'], '柳州':[24.31,109.42,'广西'], '北海':[21.48,109.12,'广西'], '玉林':[22.63,110.18,'广西'],
+  '海口':[20.04,110.20,'海南'], '三亚':[18.25,109.51,'海南'],
+  '成都':[30.67,104.07,'四川'], '绵阳':[31.47,104.68,'四川'], '乐山':[29.55,103.77,'四川'], '南充':[30.80,106.08,'四川'], '宜宾':[28.77,104.64,'四川'], '泸州':[28.87,105.44,'四川'], '德阳':[31.13,104.40,'四川'],
+  '贵阳':[26.65,106.63,'贵州'], '遵义':[27.73,106.93,'贵州'], '六盘水':[26.59,104.83,'贵州'], '安顺':[26.25,105.93,'贵州'],
+  '昆明':[25.04,102.71,'云南'], '曲靖':[25.48,103.78,'云南'], '大理':[25.61,100.27,'云南'], '丽江':[26.86,100.23,'云南'], '玉溪':[24.35,102.55,'云南'], '西双版纳':[22.00,100.80,'云南'],
+  '拉萨':[29.65,91.13,'西藏'], '西安':[34.34,108.94,'陕西'], '咸阳':[34.34,108.71,'陕西'], '宝鸡':[34.36,107.24,'陕西'], '延安':[36.60,109.50,'陕西'], '汉中':[33.07,107.03,'陕西'], '榆林':[38.29,109.74,'陕西'],
+  '兰州':[36.06,103.83,'甘肃'], '天水':[34.58,105.72,'甘肃'], '酒泉':[39.74,98.51,'甘肃'], '嘉峪关':[39.77,98.29,'甘肃'],
+  '西宁':[36.62,101.78,'青海'], '银川':[38.49,106.23,'宁夏'], '乌鲁木齐':[43.83,87.62,'新疆'], '克拉玛依':[45.60,84.89,'新疆'], '库尔勒':[41.68,86.15,'新疆'], '喀什':[39.47,75.99,'新疆']
+};
+
+function fetchForecast(lat, lon) {
+  fetch('https://api.open-meteo.com/v1/forecast?latitude=' + lat + '&longitude=' + lon + '&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=3')
+    .then(function(r){ return r.json(); })
+    .then(function(d){ if (d) document.getElementById('weatherResult').innerHTML = renderWeatherCards(d); })
+    .catch(function(){ document.getElementById('weatherResult').innerHTML = '<div class="empty-state">天气数据获取失败</div>'; });
+}
+
 function searchWeather() {
   var city = document.getElementById('weatherCity').value.trim();
   if (!city) { alert('请输入城市'); return; }
   document.getElementById('weatherResult').innerHTML = '<div class="empty-state">查询中…</div>';
-  fetch('https://geocoding-api.open-meteo.com/v1/search?name=' + encodeURIComponent(city) + '&count=1&language=zh')
+  // 1) 内置中文城市兜底（覆盖 Open-Meteo 缺中文索引的城市，如曲靖）
+  if (CN_CITIES[city]) {
+    var c = CN_CITIES[city];
+    document.getElementById('weatherCityLabel').textContent = city + (c[2] ? '，' + c[2] : '');
+    saveJSON('growth_weathercity', city);
+    fetchForecast(c[0], c[1]);
+    return;
+  }
+  // 2) Open-Meteo 地理编码（支持中英文、外国城市）
+  fetch('https://geocoding-api.open-meteo.com/v1/search?name=' + encodeURIComponent(city) + '&count=5&language=zh')
     .then(function(r){ return r.json(); })
     .then(function(g){
-      if (!g.results || !g.results.length) { document.getElementById('weatherResult').innerHTML = '<div class="empty-state">未找到该城市，试试「北京」「Shanghai」</div>'; return; }
-      var loc = g.results[0];
-      document.getElementById('weatherCityLabel').textContent = loc.name + (loc.country ? '，' + loc.country : '');
-      saveJSON('growth_weathercity', loc.name);
-      return fetch('https://api.open-meteo.com/v1/forecast?latitude=' + loc.latitude + '&longitude=' + loc.longitude + '&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=3');
+      if (g.results && g.results.length) {
+        var loc = g.results[0];
+        document.getElementById('weatherCityLabel').textContent = loc.name + (loc.country ? '，' + (loc.country === 'China' ? '中国' : loc.country) : '');
+        saveJSON('growth_weathercity', loc.name);
+        fetchForecast(loc.latitude, loc.longitude);
+        return;
+      }
+      // 3) 重试：去掉 language 限制
+      return fetch('https://geocoding-api.open-meteo.com/v1/search?name=' + encodeURIComponent(city) + '&count=5')
+        .then(function(r2){ return r2.json(); })
+        .then(function(g2){
+          if (g2.results && g2.results.length) {
+            var loc2 = g2.results[0];
+            document.getElementById('weatherCityLabel').textContent = loc2.name + (loc2.country ? '，' + loc2.country : '');
+            saveJSON('growth_weathercity', loc2.name);
+            fetchForecast(loc2.latitude, loc2.longitude);
+          } else {
+            document.getElementById('weatherResult').innerHTML = '<div class="empty-state">未找到「' + city + '」，可试拼音（如 Qujing）或更大城市名</div>';
+          }
+        });
     })
-    .then(function(r){ return r ? r.json() : null; })
-    .then(function(d){ if (d) document.getElementById('weatherResult').innerHTML = renderWeatherCards(d); })
     .catch(function(){ document.getElementById('weatherResult').innerHTML = '<div class="empty-state">查询失败，请检查网络（需联网）</div>'; });
 }
 function geoWeather() {
