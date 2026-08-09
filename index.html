@@ -544,7 +544,7 @@
     <!-- Tab6 时事政治 -->
     <div class="tab-content" id="tab-news">
       <div class="card">
-        <div class="card-header"><span class="card-icon">🌍</span><span class="card-title">时事政治 & 热点事件</span><span class="card-subtitle">2026年8月 · 今日更新</span></div>
+        <div class="card-header"><span class="card-icon">🌍</span><span class="card-title">时事政治 & 热点事件</span><span class="card-subtitle" id="newsSource">2026年8月 · 今日更新</span></div>
         <div class="news-feed" id="newsFeed"></div>
       </div>
     </div>
@@ -959,6 +959,36 @@ var aiSuggestions = [
   { title:"热点蹭流量技巧", content:["热点事件发生后30分钟内发布相关内容效果最佳","结合自己账号人设，勿生硬蹭热点","热点+实用干货=高完播率组合","热点话题使用抖音挑战赛BGM/特效增加曝光"] }
 ];
 var suggestionIndex = 0;
+
+// ===================== 每日定时更新（外部 data.json） =====================
+function rotateArray(arr, n) {
+  if (!arr || !arr.length) return arr;
+  n = ((n % arr.length) + arr.length) % arr.length;
+  return arr.slice(n).concat(arr.slice(0, n));
+}
+function applyDailyRotation() {
+  // 无 data.json（如本地打开）时，按日期轮换精选内容，保证每天看到不同内容
+  var doy = dayOfYear();
+  if (hotTopics.length) {
+    hotTopics = rotateArray(hotTopics, doy).map(function(t, i) { var c = {}; for (var k in t) c[k] = t[k]; c.rank = i + 1; return c; });
+  }
+  if (liveInspiration.length) liveInspiration = rotateArray(liveInspiration, doy);
+  if (newsData.length) newsData = rotateArray(newsData, doy);
+  renderHotTopics(); renderLiveInspiration(); renderNews();
+}
+function fetchDailyData() {
+  fetch('./data.json?t=' + Date.now(), { cache: 'no-store' })
+    .then(function(r) { if (!r.ok) throw new Error('no data'); return r.json(); })
+    .then(function(d) {
+      if (d && Array.isArray(d.newsData) && d.newsData.length) newsData = d.newsData;
+      if (d && Array.isArray(d.hotTopics) && d.hotTopics.length) hotTopics = d.hotTopics;
+      if (d && Array.isArray(d.liveInspiration) && d.liveInspiration.length) liveInspiration = d.liveInspiration;
+      var src = document.getElementById('newsSource');
+      if (src) src.textContent = '每日更新 · ' + (d.updatedAt || '最新');
+      renderHotTopics(); renderLiveInspiration(); renderNews();
+    })
+    .catch(function() { applyDailyRotation(); });
+}
 
 // ===================== 记账本 =====================
 var financeCategories = {
@@ -1565,6 +1595,7 @@ window.addEventListener('DOMContentLoaded', function() {
   renderStock();
   renderSchedule();
   autoWeather();
+  fetchDailyData();
 });
 
 // ===================== 跨设备同步（二维码传输） =====================
