@@ -24,8 +24,9 @@ async function getNews() {
     try {
       const r = await fetch('https://apis.tianapi.com/topnews/index?key=' + KEY + '&num=10');
       const j = await r.json();
-      if (j && j.code === 200 && Array.isArray(j.newslist) && j.newslist.length) {
-        return j.newslist.map(n => ({
+      const list = (j && j.result && Array.isArray(j.result.newslist)) ? j.result.newslist : null;
+      if (j && j.code === 200 && list && list.length) {
+        return list.map(n => ({
           badge: n.class || '综合',
           cls: 'internal',
           title: n.title,
@@ -34,6 +35,8 @@ async function getNews() {
           detail: n.content || n.title,
           angles: ['结合时事做轻知识解读', '注意客观中立', '延伸相关实用话题']
         }));
+      } else if (j) {
+        console.log('天行新闻接口返回异常 code=' + j.code + ' msg=' + (j.msg || ''));
       }
     } catch (e) {
       console.log('天行新闻接口失败，使用精选轮换：', e.message);
