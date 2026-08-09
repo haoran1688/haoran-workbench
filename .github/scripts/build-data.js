@@ -24,26 +24,45 @@ function guessType(t) {
   return 'life';
 }
 
-// 抖音热搜：优先用真实接口（无 key 也能用）
-async function getHotTopics() {
+// 抖音热搜：优先用真实接口（多源尝试，无需 key）
+async function fetchJson(url) {
   try {
-    const r = await fetch('https://api.vvhan.com/api/hotlist/douyinHot');
-    const j = await r.json();
-    if (j && j.code === 200 && Array.isArray(j.data) && j.data.length) {
-      return j.data.slice(0, 12).map((it, i) => ({
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 8000);
+    const r = await fetch(url, { signal: ctrl.signal, headers: { 'User-Agent': 'Mozilla/5.0' } });
+    clearTimeout(t);
+    if (!r.ok) throw new Error('http ' + r.status);
+    return await r.json();
+  } catch (e) {
+    console.log('  接口失败 ' + url + ' -> ' + e.message);
+    return null;
+  }
+}
+async function getHotTopics() {
+  // 候选免 key 热搜源
+  const sources = [
+    { url: 'https://api.vvhan.com/api/hotlist/douyinHot', map: d => (d && d.code === 200 && Array.isArray(d.data)) ? d.data : null },
+    { url: 'https://tenapi.cn/v2/douyinhot', map: d => (d && d.code === 200 && Array.isArray(d.data)) ? d.data : null },
+    { url: 'https://api.oioweb.cn/api/common/douyinHot', map: d => (d && d.code === 200 && Array.isArray(d.data)) ? d.data : null }
+  ];
+  for (const s of sources) {
+    const j = await fetchJson(s.url);
+    const list = j ? s.map(j) : null;
+    if (list && list.length) {
+      console.log('  ✅ 热搜源可用: ' + s.url);
+      return list.slice(0, 12).map((it, i) => ({
         rank: i + 1,
-        title: it.title,
-        desc: it.hot ? ('热度 ' + it.hot) : '抖音热搜',
-        type: guessType(it.title),
+        title: it.title || it.word || it.hotword || '',
+        desc: it.hot ? ('热度 ' + it.hot) : (it.desc || '抖音热搜'),
+        type: guessType(it.title || ''),
         heat: it.hot || '热搜',
-        keyword: it.title,
-        detail: (it.title || '') + ' 登上抖音热搜，可趁热度做相关直播 / 短视频内容，注意结合自身人设。',
+        keyword: it.title || it.word || '',
+        detail: (it.title || it.word || '') + ' 登上抖音热搜，可趁热度做相关直播 / 短视频内容，注意结合自身人设。',
         angles: ['结合账号人设做热点解读', '注意客观中立表述', '延伸相关实用话题']
       }));
     }
-  } catch (e) {
-    console.log('抖音热搜接口失败，使用精选轮换：', e.message);
   }
+  console.log('  所有免 key 热搜源均不可用，使用精选轮换');
   return rotate(curated.hotTopics, DOY).map((t, i) => Object.assign({}, t, { rank: i + 1 }));
 }
 
