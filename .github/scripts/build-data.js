@@ -1,5 +1,7 @@
-// 每日内容更新脚本：抓取真实热搜/新闻，写入 data.json
-// 由 GitHub Actions 定时调用（无需任何密钥也能更新抖音热搜）
+// 每日内容更新脚本：GitHub Actions 每日生成 data.json
+// 说明：GitHub 服务器在美国，连不上中国热搜/新闻接口，
+// 故「实时热搜」改由浏览器端拉取（见 index.html fetchLiveHot），
+// 本脚本负责：时事政治（有 TIAN_API_KEY 时抓真实新闻，否则精选轮换）+ 创作灵感精选轮换。
 const fs = require('fs');
 
 const curated = JSON.parse(fs.readFileSync('curated.json', 'utf8'));
@@ -12,59 +14,9 @@ function rotate(arr, n) {
 }
 function dayOfYear(d) {
   const start = new Date(d.getFullYear(), 0, 0);
-  const diff = d - start;
-  return Math.floor(diff / 86400000);
+  return Math.floor((d - start) / 86400000);
 }
 const DOY = dayOfYear(new Date());
-
-function guessType(t) {
-  if (/剧|明星|歌|综|演员|主播/.test(t)) return 'entertainment';
-  if (/台风|地震|灾害|事故|枪击|火灾/.test(t)) return 'social';
-  if (/AI|科技|手机|芯片|算法/.test(t)) return 'tech';
-  return 'life';
-}
-
-// 抖音热搜：优先用真实接口（多源尝试，无需 key）
-async function fetchJson(url) {
-  try {
-    const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), 8000);
-    const r = await fetch(url, { signal: ctrl.signal, headers: { 'User-Agent': 'Mozilla/5.0' } });
-    clearTimeout(t);
-    if (!r.ok) throw new Error('http ' + r.status);
-    return await r.json();
-  } catch (e) {
-    console.log('  接口失败 ' + url + ' -> ' + e.message);
-    return null;
-  }
-}
-async function getHotTopics() {
-  // 候选免 key 热搜源
-  const sources = [
-    { url: 'https://api.vvhan.com/api/hotlist/douyinHot', map: d => (d && d.code === 200 && Array.isArray(d.data)) ? d.data : null },
-    { url: 'https://tenapi.cn/v2/douyinhot', map: d => (d && d.code === 200 && Array.isArray(d.data)) ? d.data : null },
-    { url: 'https://api.oioweb.cn/api/common/douyinHot', map: d => (d && d.code === 200 && Array.isArray(d.data)) ? d.data : null }
-  ];
-  for (const s of sources) {
-    const j = await fetchJson(s.url);
-    const list = j ? s.map(j) : null;
-    if (list && list.length) {
-      console.log('  ✅ 热搜源可用: ' + s.url);
-      return list.slice(0, 12).map((it, i) => ({
-        rank: i + 1,
-        title: it.title || it.word || it.hotword || '',
-        desc: it.hot ? ('热度 ' + it.hot) : (it.desc || '抖音热搜'),
-        type: guessType(it.title || ''),
-        heat: it.hot || '热搜',
-        keyword: it.title || it.word || '',
-        detail: (it.title || it.word || '') + ' 登上抖音热搜，可趁热度做相关直播 / 短视频内容，注意结合自身人设。',
-        angles: ['结合账号人设做热点解读', '注意客观中立表述', '延伸相关实用话题']
-      }));
-    }
-  }
-  console.log('  所有免 key 热搜源均不可用，使用精选轮换');
-  return rotate(curated.hotTopics, DOY).map((t, i) => Object.assign({}, t, { rank: i + 1 }));
-}
 
 // 时事新闻：有 TIAN_API_KEY 时抓真实新闻，否则精选轮换
 async function getNews() {
@@ -91,13 +43,15 @@ async function getNews() {
 }
 
 (async () => {
-  const [hot, news] = await Promise.all([getHotTopics(), getNews()]);
+  const news = await getNews();
   const out = {
     updatedAt: new Date().toISOString().slice(0, 10),
-    hotTopics: hot,
+    // 热搜留空，由浏览器端 fetchLiveHot 实时填充；为空时回退到精选轮换
+    hotTopics: [],
+    liveNote: 'hotTopics 由浏览器端实时拉取，详见 index.html',
     liveInspiration: rotate(curated.liveInspiration, DOY),
     newsData: news
   };
   fs.writeFileSync('data.json', JSON.stringify(out, null, 2));
-  console.log('✅ data.json 已生成 | 热搜 ' + hot.length + ' 条 | 新闻 ' + news.length + ' 条');
+  console.log('✅ data.json 已生成 | 新闻 ' + news.length + ' 条 | 热搜由浏览器端实时拉取');
 })();
